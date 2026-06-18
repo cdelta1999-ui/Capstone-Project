@@ -7,7 +7,6 @@ import {
   UCurveChart,
   ClusterScatter,
   FatigueCurveChart,
-  HoursSatisfactionScatter,
   SatisfactionDistBar,
   DeptBrainDrainChart,
   SalaryChurnBar,
@@ -55,6 +54,16 @@ function Card({ title, subtitle, children, className = "", delay = 0 }: {
 
 function Skeleton() {
   return <div className="w-full h-full bg-slate-100 rounded-xl animate-pulse min-h-[120px]" />;
+}
+
+// ── Section label ─────────────────────────────────────────────────────────────
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <span className="h-3.5 w-1 rounded-full bg-indigo-500" />
+      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{children}</h2>
+    </div>
+  );
 }
 
 // ── Compact profile card ─────────────────────────────────────────────────────
@@ -139,7 +148,7 @@ export default function Dashboard() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-end justify-between">
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">HR Command Center</h1>
-          <p className="text-xs text-slate-500">People analytics for <span className="font-semibold text-slate-700">14,999 employees</span> — making the cost of attrition actionable</p>
+          <p className="text-xs text-slate-500">People analytics for <span className="font-semibold text-slate-700">{summary.totalEmployees.toLocaleString()} employees</span> — making the cost of attrition actionable</p>
         </div>
         <span className="text-[10px] text-slate-400 hidden md:block">Data: HR_comma_sep · {new Date().toLocaleDateString()}</span>
       </motion.div>
@@ -156,9 +165,10 @@ export default function Dashboard() {
         <KpiCard title="Avg Tenure" value={summary.avgTenure} suffix="yr" decimals={1} gradient="from-emerald-50 to-emerald-100" delay={0.24} compact />
       </div>
 
-      {/* ── Hero row: 3D Dept Bars + Sankey ─────────────────── */}
+      {/* ── Attrition Overview: 3D Dept Bars + Sankey ───────── */}
+      <SectionLabel>Attrition Overview</SectionLabel>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        <Card title="Attrition by Department (3D)" subtitle="Drag to rotate · auto-orbiting" className="lg:col-span-7 h-[320px]" delay={0.1}>
+        <Card title="Attrition by Department" subtitle="Share of each team that left — drag to rotate" className="lg:col-span-7 h-[340px]" delay={0.1}>
           {deptForBars.length > 0 ? (
             <WebGLBoundary fallback={<DeptAttritionBar data={deptForBars} />}>
               <Suspense fallback={<DeptAttritionBar data={deptForBars} />}>
@@ -167,14 +177,15 @@ export default function Dashboard() {
             </WebGLBoundary>
           ) : <Skeleton />}
         </Card>
-        <Card title="Attrition Flow" subtitle="Where 3,571 leavers came from — Sankey diagram" className="lg:col-span-5 h-[320px]" delay={0.15}>
+        <Card title="Attrition Flow" subtitle={`How ${summary.totalEmployees.toLocaleString()} employees split into stayers, leavers & leaver profiles`} className="lg:col-span-5 h-[340px]" delay={0.15}>
           {churnProfiles ? (
             <SankeyFlow total={summary.totalEmployees} stayed={summary.stayedCount} left={summary.leftCount} profiles={churnProfiles} />
           ) : <Skeleton />}
         </Card>
       </div>
 
-      {/* ── Three Churn Profiles ────────────────────────────── */}
+      {/* ── Why Employees Leave: profiles + root-cause charts ── */}
+      <SectionLabel>Why Employees Leave</SectionLabel>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {churnProfiles ? (
           churnProfiles.map((p, i) => <ProfileCard key={p.name} profile={p} delay={0.1 + i * 0.06} />)
@@ -183,40 +194,38 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ── Root Cause Analysis (4 charts) ──────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <Card title="U-Curve: Churn by Projects" subtitle="Sweet spot 3–5 · overload spikes churn" className="h-[210px]" delay={0.05}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <Card title="Churn by Project Load" subtitle="Sweet spot at 3–5 · overload spikes churn" className="h-[250px]" delay={0.05}>
           {projAttr ? <UCurveChart data={projAttr} /> : <Skeleton />}
         </Card>
-        <Card title="Three Churn Profiles" subtitle="Evaluation vs satisfaction clusters" className="h-[210px]" delay={0.1}>
+        <Card title="Leaver Clusters" subtitle="Satisfaction vs evaluation — three distinct groups" className="h-[250px]" delay={0.1}>
           {scatter ? <ClusterScatter data={scatter} /> : <Skeleton />}
         </Card>
-        <Card title="Fatigue Curve: Hours by Tenure" subtitle="Leavers spike at the 4–5 year mark" className="h-[210px]" delay={0.15}>
+        <Card title="Fatigue Curve" subtitle="Leavers' workload spikes at the 4–5 year mark" className="h-[250px]" delay={0.15}>
           {fatigueCurve ? <FatigueCurveChart data={fatigueCurve} /> : <Skeleton />}
-        </Card>
-        <Card title="Hours vs Satisfaction" subtitle="Over- & under-worked both churn" className="h-[210px]" delay={0.2}>
-          {scatter ? <HoursSatisfactionScatter data={scatter} /> : <Skeleton />}
         </Card>
       </div>
 
-      {/* ── Organizational Breakdown (4 charts) ─────────────── */}
+      {/* ── Organizational Exposure (4 charts) ──────────────── */}
+      <SectionLabel>Organizational Exposure</SectionLabel>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <Card title="Satisfaction Distribution" subtitle="Bimodal leaver pattern" className="h-[230px]" delay={0.05}>
+        <Card title="Satisfaction Distribution" subtitle="Bimodal leaver pattern" className="h-[240px]" delay={0.05}>
           {satDist ? <SatisfactionDistBar data={satDist} /> : <Skeleton />}
         </Card>
-        <Card title="Departmental Brain Drain" subtitle="Leavers score higher on evals" className="h-[230px]" delay={0.1}>
+        <Card title="Departmental Brain Drain" subtitle="Leavers score higher on evals" className="h-[240px]" delay={0.1}>
           {brainDrain ? <DeptBrainDrainChart data={brainDrain} /> : <Skeleton />}
         </Card>
-        <Card title="Churn by Salary Band" subtitle="Low earners churn far more" className="h-[230px]" delay={0.15}>
+        <Card title="Churn by Salary Band" subtitle="Low earners churn far more" className="h-[240px]" delay={0.15}>
           {salaryAttr ? <SalaryChurnBar data={salaryAttr} /> : <Skeleton />}
         </Card>
-        <Card title="Tenure vs Churn Rate" subtitle="Spike at years 3–5" className="h-[230px]" delay={0.2}>
+        <Card title="Tenure vs Churn Rate" subtitle="Spike at years 3–5" className="h-[240px]" delay={0.2}>
           {tenureAttr ? <TenureAttritionLine data={tenureAttr} /> : <Skeleton />}
         </Card>
       </div>
 
       {/* ── ML Feature Importance ───────────────────────────── */}
-      <Card title="ML Model — Top Predictors of Churn" subtitle="Feature importance (Random Forest)" className="h-[200px]" delay={0.05}>
+      <SectionLabel>Predictive Model</SectionLabel>
+      <Card title="Top Predictors of Churn" subtitle="Feature importance (Random Forest)" className="h-[200px]" delay={0.05}>
         {riskFactors ? <FeatureImportanceBar data={riskFactors} /> : <Skeleton />}
       </Card>
 

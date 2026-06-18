@@ -151,7 +151,7 @@
   --chart-4: 35 95% 55%;    /* amber */
   --chart-5: 340 82% 58%;   /* rose */
 
-  --app-font-sans: 'IBM Plex Sans', sans-serif;
+  --app-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .625rem;
