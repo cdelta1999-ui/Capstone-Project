@@ -72,6 +72,7 @@ export interface ScatterPoint {
   evaluation: number;
   left: number;
   hours: number;
+  cluster: string;
 }
 
 export interface DepartmentDeep {
@@ -91,5 +92,31 @@ export interface ProjectsAttrition {
   attritionRate: number;
   avgSatisfaction: number;
   avgHours: number;
+}
+
+export interface ChurnProfile {
+  name: string;
+  count: number;
+  pctOfLeavers: number;
+  avgSatisfaction: number;
+  avgEvaluation: number;
+  avgHours: number;
+  color: string;
+  description: string;
+  actionPlan: string;
+}
+
+export interface FatigueCurvePoint {
+  tenure: number;
+  avgHoursLeft: number;
+  avgHoursStayed: number;
+}
+
+export interface DeptBrainDrain {
+  department: string;
+  avgEvalLeft: number;
+  avgEvalStayed: number;
+  leftCount: number;
+  stayedCount: number;
 }
 

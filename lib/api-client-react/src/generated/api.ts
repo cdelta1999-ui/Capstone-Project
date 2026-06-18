@@ -16,8 +16,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ChurnProfile,
   DepartmentAttrition,
   DepartmentDeep,
+  DeptBrainDrain,
+  FatigueCurvePoint,
   HealthStatus,
   HoursProjects,
   HrSummary,
@@ -667,7 +670,7 @@ export const getGetScatterSampleUrl = () => {
 }
 
 /**
- * @summary Sampled satisfaction vs evaluation scatter data
+ * @summary Sampled satisfaction vs evaluation scatter data with cluster labels
  */
 export const getScatterSample = async ( options?: RequestInit): Promise<ScatterPoint[]> => {
 
@@ -714,7 +717,7 @@ export type GetScatterSampleQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Sampled satisfaction vs evaluation scatter data
+ * @summary Sampled satisfaction vs evaluation scatter data with cluster labels
  */
 
 export function useGetScatterSample<TData = Awaited<ReturnType<typeof getScatterSample>>, TError = ErrorType<unknown>>(
@@ -877,6 +880,237 @@ export function useGetProjectsAttrition<TData = Awaited<ReturnType<typeof getPro
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetProjectsAttritionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetChurnProfilesUrl = () => {
+
+
+
+
+  return `/api/hr/churn-profiles`
+}
+
+/**
+ * @summary Three behavioral archetypes of employees who left
+ */
+export const getChurnProfiles = async ( options?: RequestInit): Promise<ChurnProfile[]> => {
+
+  return customFetch<ChurnProfile[]>(getGetChurnProfilesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChurnProfilesQueryKey = () => {
+    return [
+    `/api/hr/churn-profiles`
+    ] as const;
+    }
+
+
+export const getGetChurnProfilesQueryOptions = <TData = Awaited<ReturnType<typeof getChurnProfiles>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChurnProfiles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChurnProfilesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChurnProfiles>>> = ({ signal }) => getChurnProfiles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChurnProfiles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChurnProfilesQueryResult = NonNullable<Awaited<ReturnType<typeof getChurnProfiles>>>
+export type GetChurnProfilesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Three behavioral archetypes of employees who left
+ */
+
+export function useGetChurnProfiles<TData = Awaited<ReturnType<typeof getChurnProfiles>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChurnProfiles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChurnProfilesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetFatigueCurveUrl = () => {
+
+
+
+
+  return `/api/hr/fatigue-curve`
+}
+
+/**
+ * @summary Average monthly hours by tenure, split by left vs stayed
+ */
+export const getFatigueCurve = async ( options?: RequestInit): Promise<FatigueCurvePoint[]> => {
+
+  return customFetch<FatigueCurvePoint[]>(getGetFatigueCurveUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFatigueCurveQueryKey = () => {
+    return [
+    `/api/hr/fatigue-curve`
+    ] as const;
+    }
+
+
+export const getGetFatigueCurveQueryOptions = <TData = Awaited<ReturnType<typeof getFatigueCurve>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFatigueCurve>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFatigueCurveQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFatigueCurve>>> = ({ signal }) => getFatigueCurve({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFatigueCurve>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFatigueCurveQueryResult = NonNullable<Awaited<ReturnType<typeof getFatigueCurve>>>
+export type GetFatigueCurveQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Average monthly hours by tenure, split by left vs stayed
+ */
+
+export function useGetFatigueCurve<TData = Awaited<ReturnType<typeof getFatigueCurve>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFatigueCurve>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFatigueCurveQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDeptBrainDrainUrl = () => {
+
+
+
+
+  return `/api/hr/dept-brain-drain`
+}
+
+/**
+ * @summary Average evaluation score per department split by left vs stayed
+ */
+export const getDeptBrainDrain = async ( options?: RequestInit): Promise<DeptBrainDrain[]> => {
+
+  return customFetch<DeptBrainDrain[]>(getGetDeptBrainDrainUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDeptBrainDrainQueryKey = () => {
+    return [
+    `/api/hr/dept-brain-drain`
+    ] as const;
+    }
+
+
+export const getGetDeptBrainDrainQueryOptions = <TData = Awaited<ReturnType<typeof getDeptBrainDrain>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDeptBrainDrain>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDeptBrainDrainQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDeptBrainDrain>>> = ({ signal }) => getDeptBrainDrain({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDeptBrainDrain>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDeptBrainDrainQueryResult = NonNullable<Awaited<ReturnType<typeof getDeptBrainDrain>>>
+export type GetDeptBrainDrainQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Average evaluation score per department split by left vs stayed
+ */
+
+export function useGetDeptBrainDrain<TData = Awaited<ReturnType<typeof getDeptBrainDrain>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDeptBrainDrain>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDeptBrainDrainQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

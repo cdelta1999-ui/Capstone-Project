@@ -1,221 +1,392 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   ScatterChart, Scatter, ZAxis,
   BarChart, Bar,
   ComposedChart, Line,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+  ReferenceLine,
 } from "recharts";
-import type { 
-  SalaryAttrition, SatisfactionBucket, ScatterPoint, 
-  HoursProjects, TenureAttrition, DepartmentDeep, ProjectsAttrition 
+import type {
+  SalaryAttrition, SatisfactionBucket, ScatterPoint,
+  HoursProjects, TenureAttrition, DepartmentDeep, ProjectsAttrition,
+  RiskFactor, ChurnProfile, FatigueCurvePoint, DeptBrainDrain,
 } from "@workspace/api-client-react";
 
-// Colors matching the requested light theme palette
-const COLORS = {
-  primary: "#6366f1",
+const C = {
+  indigo: "#6366f1",
   sky: "#0ea5e9",
   teal: "#14b8a6",
   amber: "#f59e0b",
   rose: "#f43f5e",
+  violet: "#8b5cf6",
+  emerald: "#10b981",
   slate: "#64748b",
-  stayed: "#6366f1", // Indigo for staying
-  left: "#f43f5e"    // Rose for leaving
+  cyan: "#06b6d4",
+  pink: "#ec4899",
+  stayed: "#6366f1",
+  left: "#f43f5e",
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
+const Tip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white/95 backdrop-blur-sm p-2.5 border border-slate-100 shadow-xl rounded-lg text-xs">
+      {label && <p className="font-semibold text-slate-700 mb-1">{label}</p>}
+      {payload.map((e: any, i: number) => (
+        <p key={i} className="flex items-center gap-1.5" style={{ color: e.color || e.fill }}>
+          <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: e.color || e.fill }} />
+          {e.name}: <span className="font-semibold ml-0.5">{typeof e.value === "number" ? +e.value.toFixed(2) : e.value}</span>
+        </p>
+      ))}
+    </div>
+  );
+};
+
+// ── Sankey Attrition Flow ────────────────────────────────────────────────────
+export function SankeyFlow({ total, stayed, left, profiles }: {
+  total: number; stayed: number; left: number; profiles: ChurnProfile[];
+}) {
+  const W = 560; const H = 280;
+  const col1x = 60; const col2x = 220; const col3x = 420;
+  const nodeW = 18;
+
+  const stayedH = (stayed / total) * (H - 20);
+  const leftH = (left / total) * (H - 20);
+  const stayedY = 10;
+  const leftY = stayedH + 30;
+
+  const profileNodes = profiles.map((p, i) => {
+    const h = (p.count / left) * (leftH - (profiles.length - 1) * 6);
+    const y = leftY + profiles.slice(0, i).reduce((acc, pp) => acc + (pp.count / left) * (leftH - (profiles.length - 1) * 6) + 6, 0);
+    return { ...p, h, y, color: p.color };
+  });
+
+  function bezier(x1: number, y1: number, h1: number, x2: number, y2: number, h2: number, color: string, opacity: number) {
+    const mx = (x1 + x2) / 2;
     return (
-      <div className="bg-white/95 backdrop-blur-sm p-3 border border-slate-100 shadow-xl rounded-lg">
-        <p className="font-semibold text-slate-800 mb-1">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm flex items-center gap-2" style={{ color: entry.color || entry.fill }}>
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || entry.fill }}></span>
-            {entry.name}: <span className="font-medium">{typeof entry.value === 'number' ? entry.value.toFixed(2).replace(/\.00$/, '') : entry.value}</span>
-          </p>
-        ))}
-      </div>
+      <path
+        d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}
+           L${x2},${y2 + h2} C${mx},${y2 + h2} ${mx},${y1 + h1} ${x1},${y1 + h1} Z`}
+        fill={color} opacity={opacity}
+      />
     );
   }
-  return null;
-};
 
-// 3. Animated Radial/Donut Chart — Salary vs Attrition
-export function SalaryDonut({ data }: { data: SalaryAttrition[] }) {
-  const chartData = data.map(d => ({
-    name: d.salary.charAt(0).toUpperCase() + d.salary.slice(1),
-    value: d.attritionRate * 100
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 280 }}>
+      {/* All Employees node */}
+      <rect x={col1x} y={10} width={nodeW} height={H - 20} rx={4} fill={C.indigo} />
+      <text x={col1x + nodeW + 6} y={H / 2 - 6} fontSize={11} fill="#334155" fontWeight="600">All Employees</text>
+      <text x={col1x + nodeW + 6} y={H / 2 + 8} fontSize={10} fill="#64748b">{total.toLocaleString()}</text>
+
+      {/* Stayed node */}
+      <rect x={col2x} y={stayedY} width={nodeW} height={stayedH} rx={4} fill={C.teal} />
+      <text x={col2x + nodeW + 6} y={stayedY + stayedH / 2 - 6} fontSize={11} fill="#334155" fontWeight="600">Stayed</text>
+      <text x={col2x + nodeW + 6} y={stayedY + stayedH / 2 + 8} fontSize={10} fill="#64748b">{stayed.toLocaleString()}</text>
+
+      {/* Left node */}
+      <rect x={col2x} y={leftY} width={nodeW} height={leftH} rx={4} fill={C.rose} />
+      <text x={col2x + nodeW + 6} y={leftY + leftH / 2 - 6} fontSize={11} fill="#334155" fontWeight="600">Left</text>
+      <text x={col2x + nodeW + 6} y={leftY + leftH / 2 + 8} fontSize={10} fill="#64748b">{left.toLocaleString()}</text>
+
+      {/* Flow: All → Stayed */}
+      {bezier(col1x + nodeW, 10, stayedH, col2x, stayedY, stayedH, C.teal, 0.25)}
+      {/* Flow: All → Left */}
+      {bezier(col1x + nodeW, 10 + stayedH, leftH, col2x, leftY, leftH, C.rose, 0.25)}
+
+      {/* Profile nodes */}
+      {profileNodes.map((p) => (
+        <g key={p.name}>
+          <rect x={col3x} y={p.y} width={nodeW} height={p.h} rx={4} fill={p.color} />
+          <text x={col3x + nodeW + 6} y={p.y + p.h / 2 - 5} fontSize={10} fill="#334155" fontWeight="600">{p.name.replace("Underperformers", "Under...")}</text>
+          <text x={col3x + nodeW + 6} y={p.y + p.h / 2 + 7} fontSize={9} fill="#64748b">{p.count.toLocaleString()}</text>
+          {bezier(col2x + nodeW, leftY + (p.y - leftY), p.h, col3x, p.y, p.h, p.color, 0.22)}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ── Feature Importance Bar ───────────────────────────────────────────────────
+export function FeatureImportanceBar({ data }: { data: RiskFactor[] }) {
+  const chartData = [...data].sort((a, b) => b.importance - a.importance).map(d => ({
+    name: d.factor,
+    value: +(d.importance * 100).toFixed(1),
   }));
-
-  const pieColors = [COLORS.sky, COLORS.amber, COLORS.rose];
-
+  const palette = [C.rose, C.indigo, C.teal, C.amber, C.sky, C.violet];
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie
-          data={chartData}
-          cx="50%"
-          cy="50%"
-          innerRadius={60}
-          outerRadius={80}
-          paddingAngle={5}
-          dataKey="value"
-          animationDuration={1500}
-          animationBegin={200}
-        >
-          {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
-          ))}
-        </Pie>
-        <Tooltip content={<CustomTooltip />} />
-        <Legend verticalAlign="bottom" height={36} iconType="circle" />
-      </PieChart>
-    </ResponsiveContainer>
-  );
-}
-
-// 4. Animated Area Chart — Satisfaction Distribution
-export function SatisfactionArea({ data }: { data: SatisfactionBucket[] }) {
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-        <defs>
-          <linearGradient id="colorLeft" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={COLORS.left} stopOpacity={0.8}/>
-            <stop offset="95%" stopColor={COLORS.left} stopOpacity={0}/>
-          </linearGradient>
-          <linearGradient id="colorStayed" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={COLORS.stayed} stopOpacity={0.8}/>
-            <stop offset="95%" stopColor={COLORS.stayed} stopOpacity={0}/>
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-        <XAxis dataKey="bucket" tick={{fontSize: 12, fill: COLORS.slate}} axisLine={false} tickLine={false} />
-        <YAxis tick={{fontSize: 12, fill: COLORS.slate}} axisLine={false} tickLine={false} />
-        <Tooltip content={<CustomTooltip />} />
-        <Area type="monotone" dataKey="left" name="Left" stroke={COLORS.left} fillOpacity={1} fill="url(#colorLeft)" animationDuration={1200} />
-        <Area type="monotone" dataKey="stayed" name="Stayed" stroke={COLORS.stayed} fillOpacity={1} fill="url(#colorStayed)" animationDuration={1200} />
-        <Legend iconType="circle" />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
-
-// 5. Flowing Animated Scatter Plot — Satisfaction × Evaluation
-export function EvaluationScatter({ data }: { data: ScatterPoint[] }) {
-  const leftData = data.filter(d => d.left === 1);
-  const stayedData = data.filter(d => d.left === 0);
-
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-        <XAxis type="number" dataKey="satisfaction" name="Satisfaction" domain={[0, 1]} tick={{fontSize: 12}} label={{ value: 'Satisfaction Score', position: 'bottom', offset: 0, fontSize: 12 }} />
-        <YAxis type="number" dataKey="evaluation" name="Evaluation" domain={[0.3, 1]} tick={{fontSize: 12}} label={{ value: 'Evaluation Score', angle: -90, position: 'insideLeft', fontSize: 12 }} />
-        <ZAxis type="number" range={[20, 20]} />
-        <Tooltip cursor={{strokeDasharray: '3 3'}} content={<CustomTooltip />} />
-        <Legend iconType="circle" />
-        <Scatter name="Left" data={leftData} fill={COLORS.left} opacity={0.6} animationDuration={1500} />
-        <Scatter name="Stayed" data={stayedData} fill={COLORS.stayed} opacity={0.4} animationDuration={1500} />
-      </ScatterChart>
-    </ResponsiveContainer>
-  );
-}
-
-// 6. Grouped Bar Chart — Projects vs Avg Monthly Hours
-export function ProjectsHoursBar({ data }: { data: HoursProjects[] }) {
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-        <XAxis dataKey="projects" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
-        <YAxis tick={{fontSize: 12}} axisLine={false} tickLine={false} />
-        <Tooltip content={<CustomTooltip />} />
-        <Legend iconType="circle" />
-        <Bar dataKey="avgHoursLeft" name="Avg Hours (Left)" fill={COLORS.left} radius={[4, 4, 0, 0]} animationDuration={1000} />
-        <Bar dataKey="avgHoursStayed" name="Avg Hours (Stayed)" fill={COLORS.stayed} radius={[4, 4, 0, 0]} animationDuration={1000} />
+      <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 40, left: 140, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+        <XAxis type="number" tick={{ fontSize: 11, fill: C.slate }} unit="%" domain={[0, 40]} axisLine={false} tickLine={false} />
+        <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#334155" }} width={135} axisLine={false} tickLine={false} />
+        <Tooltip content={<Tip />} formatter={(v: any) => [`${v}%`, "Importance"]} />
+        <Bar dataKey="value" radius={[0, 5, 5, 0]} animationDuration={900}>
+          {chartData.map((_, i) => <Cell key={i} fill={palette[i % palette.length]} />)}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
-// 7. Line + Area Chart — Tenure vs Attrition Rate
-export function TenureLineArea({ data }: { data: TenureAttrition[] }) {
+// ── U-Curve: Churn by Project Count ─────────────────────────────────────────
+export function UCurveChart({ data }: { data: ProjectsAttrition[] }) {
+  const chartData = data.map(d => ({ projects: d.projects, attrition: d.attritionRate, avg: d.avgHours }));
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+      <ComposedChart data={chartData} margin={{ top: 8, right: 20, left: -10, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="projects" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} label={{ value: "# Projects", position: "insideBottom", offset: -2, fontSize: 11 }} />
+        <YAxis yAxisId="l" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 110]} />
+        <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+        <Tooltip content={<Tip />} />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+        <Bar yAxisId="l" dataKey="attrition" name="Churn %" fill={C.rose} radius={[4, 4, 0, 0]} opacity={0.85} animationDuration={900} />
+        <Line yAxisId="r" type="monotone" dataKey="avg" name="Avg Hours" stroke={C.sky} strokeWidth={2.5} dot={{ r: 4 }} animationDuration={1000} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Cluster Scatter ──────────────────────────────────────────────────────────
+const CLUSTER_COLORS: Record<string, string> = {
+  Stayed: C.indigo,
+  "Burned Out Stars": C.rose,
+  "Apathetic Middle": C.violet,
+  "Unhappy Underperformers": C.amber,
+};
+export function ClusterScatter({ data }: { data: ScatterPoint[] }) {
+  const groups = useMemo(() => {
+    const map: Record<string, ScatterPoint[]> = {};
+    for (const d of data) {
+      if (!map[d.cluster]) map[d.cluster] = [];
+      map[d.cluster].push(d);
+    }
+    return map;
+  }, [data]);
+  const order = ["Stayed", "Apathetic Middle", "Burned Out Stars", "Unhappy Underperformers"];
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <ScatterChart margin={{ top: 8, right: 10, left: -20, bottom: 16 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis type="number" dataKey="satisfaction" name="Satisfaction" domain={[0, 1]} tick={{ fontSize: 10 }}
+          label={{ value: "Satisfaction", position: "insideBottom", offset: -4, fontSize: 11 }} />
+        <YAxis type="number" dataKey="evaluation" name="Evaluation" domain={[0.3, 1]} tick={{ fontSize: 10 }}
+          label={{ value: "Evaluation", angle: -90, position: "insideLeft", offset: 10, fontSize: 11 }} />
+        <ZAxis range={[12, 12]} />
+        <Tooltip cursor={{ strokeDasharray: "3 3" }} content={<Tip />} />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 10 }} />
+        {order.filter(k => groups[k]?.length).map(k => (
+          <Scatter key={k} name={k} data={groups[k]} fill={CLUSTER_COLORS[k]} opacity={k === "Stayed" ? 0.25 : 0.7} animationDuration={800} />
+        ))}
+      </ScatterChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Fatigue Curve ────────────────────────────────────────────────────────────
+export function FatigueCurveChart({ data }: { data: FatigueCurvePoint[] }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <ComposedChart data={data} margin={{ top: 8, right: 10, left: -10, bottom: 0 }}>
         <defs>
-          <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={COLORS.sky} stopOpacity={0.3}/>
-            <stop offset="95%" stopColor={COLORS.sky} stopOpacity={0}/>
+          <linearGradient id="fadeLeft" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={C.rose} stopOpacity={0.25} />
+            <stop offset="95%" stopColor={C.rose} stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="fadeStayed" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={C.indigo} stopOpacity={0.18} />
+            <stop offset="95%" stopColor={C.indigo} stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-        <XAxis dataKey="tenure" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
-        <YAxis yAxisId="left" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
-        <YAxis yAxisId="right" orientation="right" tick={{fontSize: 12}} axisLine={false} tickLine={false} tickFormatter={(val) => `${(val * 100).toFixed(0)}%`} />
-        <Tooltip content={<CustomTooltip />} />
-        <Legend iconType="circle" />
-        <Area yAxisId="left" type="monotone" dataKey="total" name="Total Employees" fill="url(#colorTotal)" stroke="none" animationDuration={1200} />
-        <Line yAxisId="right" type="monotone" dataKey="attritionRate" name="Attrition Rate" stroke={COLORS.rose} strokeWidth={3} dot={{r: 4}} animationDuration={1500} />
+        <XAxis dataKey="tenure" tick={{ fontSize: 11 }} axisLine={false} tickLine={false}
+          label={{ value: "Years at Company", position: "insideBottom", offset: -2, fontSize: 11 }} />
+        <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} domain={[100, 310]} />
+        <Tooltip content={<Tip />} />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+        <Area type="monotone" dataKey="avgHoursLeft" name="Avg Hours (Left)" stroke={C.rose} strokeWidth={2.5}
+          fill="url(#fadeLeft)" connectNulls animationDuration={1000} />
+        <Line type="monotone" dataKey="avgHoursStayed" name="Avg Hours (Stayed)" stroke={C.indigo} strokeWidth={2}
+          strokeDasharray="5 3" dot={{ r: 3 }} animationDuration={1000} />
       </ComposedChart>
     </ResponsiveContainer>
   );
 }
 
-// 9. Radar Chart — Department Deep Dive
-export function DeptRadar({ data }: { data: DepartmentDeep[] }) {
-  // Take top 5 departments by size or attrition
-  const topDepts = [...data].sort((a, b) => b.total - a.total).slice(0, 5);
-  
-  // Transform data for radar: domains need to be normalized if possible, but radar can auto-scale
-  const metrics = [
-    { key: 'avgSatisfaction', name: 'Satisfaction' },
-    { key: 'avgEvaluation', name: 'Evaluation' },
-    { key: 'attritionRate', name: 'Attrition' },
-  ];
-
-  const radarData = metrics.map(m => {
-    const row: any = { metric: m.name };
-    topDepts.forEach(d => {
-      row[d.department] = (d as any)[m.key];
-    });
-    return row;
-  });
-
-  const colors = [COLORS.primary, COLORS.rose, COLORS.sky, COLORS.teal, COLORS.amber];
-
+// ── Hours vs Satisfaction Scatter ────────────────────────────────────────────
+export function HoursSatisfactionScatter({ data }: { data: ScatterPoint[] }) {
+  const leftData = data.filter(d => d.left === 1);
+  const stayedData = data.filter(d => d.left === 0);
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-        <PolarGrid stroke="#e2e8f0" />
-        <PolarAngleAxis dataKey="metric" tick={{fontSize: 12, fill: COLORS.slate}} />
-        <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} />
-        <Tooltip content={<CustomTooltip />} />
-        <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-        {topDepts.map((d, i) => (
-          <Radar key={d.department} name={d.department} dataKey={d.department} stroke={colors[i]} fill={colors[i]} fillOpacity={0.3} animationDuration={1500} />
-        ))}
-      </RadarChart>
+      <ScatterChart margin={{ top: 8, right: 10, left: -20, bottom: 16 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis type="number" dataKey="hours" name="Hours" domain={[80, 330]} tick={{ fontSize: 10 }}
+          label={{ value: "Avg Monthly Hours", position: "insideBottom", offset: -4, fontSize: 11 }} />
+        <YAxis type="number" dataKey="satisfaction" name="Satisfaction" domain={[0, 1]} tick={{ fontSize: 10 }}
+          label={{ value: "Satisfaction", angle: -90, position: "insideLeft", offset: 10, fontSize: 11 }} />
+        <ZAxis range={[10, 10]} />
+        <Tooltip content={<Tip />} />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 10 }} />
+        <Scatter name="Stayed" data={stayedData} fill={C.indigo} opacity={0.2} animationDuration={800} />
+        <Scatter name="Left" data={leftData} fill={C.rose} opacity={0.55} animationDuration={800} />
+      </ScatterChart>
     </ResponsiveContainer>
   );
 }
 
-// 10. Line Chart — Projects vs Attrition Rate
-export function ProjectsAttritionLine({ data }: { data: ProjectsAttrition[] }) {
+// ── Dept Churn + Satisfaction overlay ───────────────────────────────────────
+export function DeptChurnComposed({ data }: { data: DepartmentDeep[] }) {
+  const sorted = [...data].sort((a, b) => b.attritionRate - a.attritionRate);
+  const chartData = sorted.map(d => ({
+    dept: d.department.replace("technical", "tech").replace("management", "mgmt").replace("product_mng", "prod"),
+    churn: d.attritionRate,
+    satisfaction: +(d.avgSatisfaction * 100).toFixed(1),
+  }));
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+      <ComposedChart data={chartData} layout="vertical" margin={{ top: 4, right: 50, left: 48, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+        <XAxis type="number" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 38]} />
+        <YAxis type="category" dataKey="dept" tick={{ fontSize: 10, fill: "#334155" }} width={44} axisLine={false} tickLine={false} />
+        <Tooltip content={<Tip />} />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 10 }} />
+        <Bar dataKey="churn" name="Churn %" fill={C.rose} radius={[0, 4, 4, 0]} opacity={0.85} animationDuration={900} />
+        <Line dataKey="satisfaction" name="Avg Sat ×100" stroke={C.teal} strokeWidth={2} dot={{ r: 3 }} animationDuration={1000} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Satisfaction Distribution Bimodal ───────────────────────────────────────
+export function SatisfactionDistBar({ data }: { data: SatisfactionBucket[] }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} margin={{ top: 4, right: 10, left: -20, bottom: 10 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-        <XAxis dataKey="projects" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
-        <YAxis yAxisId="left" tick={{fontSize: 12}} axisLine={false} tickLine={false} tickFormatter={(val) => `${(val * 100).toFixed(0)}%`} />
-        <YAxis yAxisId="right" orientation="right" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
-        <Tooltip content={<CustomTooltip />} />
-        <Legend iconType="circle" />
-        <Line yAxisId="left" type="monotone" dataKey="attritionRate" name="Attrition Rate" stroke={COLORS.rose} strokeWidth={3} dot={{r: 5}} animationDuration={1200} />
-        <Line yAxisId="right" type="monotone" dataKey="avgHours" name="Avg Hours" stroke={COLORS.teal} strokeWidth={3} dot={{r: 5}} animationDuration={1200} />
+        <XAxis dataKey="bucket" tick={{ fontSize: 9, fill: C.slate }} angle={-30} textAnchor="end" interval={0} />
+        <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+        <Tooltip content={<Tip />} />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 10 }} />
+        <Bar dataKey="stayed" name="Stayed" stackId="a" fill={C.indigo} opacity={0.85} animationDuration={900} />
+        <Bar dataKey="left" name="Left" stackId="a" fill={C.rose} opacity={0.9} radius={[3, 3, 0, 0]} animationDuration={900} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Dept Brain Drain ─────────────────────────────────────────────────────────
+export function DeptBrainDrainChart({ data }: { data: DeptBrainDrain[] }) {
+  const sorted = [...data].sort((a, b) => b.avgEvalLeft - a.avgEvalLeft);
+  const chartData = sorted.map(d => ({
+    dept: d.department.replace("technical", "tech").replace("management", "mgmt").replace("product_mng", "prod"),
+    left: +d.avgEvalLeft.toFixed(2),
+    stayed: +d.avgEvalStayed.toFixed(2),
+  }));
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 30, left: 44, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+        <XAxis type="number" domain={[0.5, 1]} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+        <YAxis type="category" dataKey="dept" tick={{ fontSize: 10, fill: "#334155" }} width={40} axisLine={false} tickLine={false} />
+        <Tooltip content={<Tip />} />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 10 }} />
+        <Bar dataKey="left" name="Leavers Eval" fill={C.rose} radius={[0, 4, 4, 0]} opacity={0.9} animationDuration={900} />
+        <Bar dataKey="stayed" name="Stayers Eval" fill={C.indigo} radius={[0, 4, 4, 0]} opacity={0.7} animationDuration={900} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Salary Churn Bar ─────────────────────────────────────────────────────────
+export function SalaryChurnBar({ data }: { data: SalaryAttrition[] }) {
+  const order = ["low", "medium", "high"];
+  const chartData = [...data]
+    .sort((a, b) => order.indexOf(a.salary) - order.indexOf(b.salary))
+    .map(d => ({
+      salary: d.salary.charAt(0).toUpperCase() + d.salary.slice(1),
+      churn: d.attritionRate,
+    }));
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={chartData} margin={{ top: 8, right: 20, left: -10, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="salary" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 35]} />
+        <Tooltip content={<Tip />} formatter={(v: any) => [`${v}%`, "Churn Rate"]} />
+        <Bar dataKey="churn" name="Churn %" radius={[6, 6, 0, 0]} animationDuration={900}>
+          <Cell fill={C.rose} />
+          <Cell fill={C.amber} />
+          <Cell fill={C.teal} />
+        </Bar>
+        <ReferenceLine y={23.8} stroke={C.slate} strokeDasharray="4 3" label={{ value: "Avg", fontSize: 10, fill: C.slate }} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Tenure Attrition Line ────────────────────────────────────────────────────
+export function TenureAttritionLine({ data }: { data: TenureAttrition[] }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <ComposedChart data={data} margin={{ top: 8, right: 30, left: -10, bottom: 0 }}>
+        <defs>
+          <linearGradient id="tenureGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={C.sky} stopOpacity={0.25} />
+            <stop offset="95%" stopColor={C.sky} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="tenure" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+        <YAxis yAxisId="l" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+        <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+        <Tooltip content={<Tip />} />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+        <Area yAxisId="l" type="monotone" dataKey="total" name="Total" fill="url(#tenureGrad)" stroke="none" animationDuration={1000} />
+        <Line yAxisId="r" type="monotone" dataKey="attritionRate" name="Churn %" stroke={C.rose} strokeWidth={2.5} dot={{ r: 4 }} animationDuration={1200} />
       </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Hours vs Projects Grouped Bar ────────────────────────────────────────────
+export function ProjectsHoursBar({ data }: { data: HoursProjects[] }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} margin={{ top: 8, right: 10, left: -20, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="projects" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+        <Tooltip content={<Tip />} />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+        <Bar dataKey="avgHoursLeft" name="Avg Hours (Left)" fill={C.rose} radius={[4, 4, 0, 0]} animationDuration={900} />
+        <Bar dataKey="avgHoursStayed" name="Avg Hours (Stayed)" fill={C.stayed} radius={[4, 4, 0, 0]} animationDuration={900} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Dept Attrition Fallback 2D ───────────────────────────────────────────────
+const DEPT_PALETTE = [C.rose, C.indigo, C.sky, C.amber, C.teal, C.violet, C.emerald, C.slate, C.cyan, C.pink];
+export function DeptAttritionBar({ data }: { data: Array<{ department: string; attritionRate: number }> }) {
+  const sorted = [...data].sort((a, b) => b.attritionRate - a.attritionRate);
+  const chartData = sorted.map(d => ({
+    name: d.department.replace("technical", "tech").replace("management", "mgmt").replace("product_mng", "prod"),
+    rate: +d.attritionRate.toFixed(1),
+  }));
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={chartData} margin={{ top: 4, right: 10, left: -10, bottom: 55 }}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fontSize: 10 }} unit="%" domain={[0, 35]} axisLine={false} tickLine={false} />
+        <Tooltip formatter={(v: any) => [`${v}%`, "Churn Rate"]} />
+        <Bar dataKey="rate" radius={[5, 5, 0, 0]} animationDuration={900}>
+          {chartData.map((_, i) => <Cell key={i} fill={DEPT_PALETTE[i % DEPT_PALETTE.length]} />)}
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   );
 }

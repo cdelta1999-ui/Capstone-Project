@@ -6,10 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ScatterPoint {
-  satisfaction: number;
-  evaluation: number;
-  left: number;
-  hours: number;
-  cluster: string;
+export interface FatigueCurvePoint {
+  tenure: number;
+  avgHoursLeft: number;
+  avgHoursStayed: number;
 }

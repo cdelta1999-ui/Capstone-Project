@@ -110,13 +110,14 @@ export const GetRiskFactorsResponse = zod.array(GetRiskFactorsResponseItem)
 
 
 /**
- * @summary Sampled satisfaction vs evaluation scatter data
+ * @summary Sampled satisfaction vs evaluation scatter data with cluster labels
  */
 export const GetScatterSampleResponseItem = zod.object({
   "satisfaction": zod.number(),
   "evaluation": zod.number(),
   "left": zod.number(),
-  "hours": zod.number()
+  "hours": zod.number(),
+  "cluster": zod.string()
 })
 export const GetScatterSampleResponse = zod.array(GetScatterSampleResponseItem)
 
@@ -148,5 +149,46 @@ export const GetProjectsAttritionResponseItem = zod.object({
   "avgHours": zod.number()
 })
 export const GetProjectsAttritionResponse = zod.array(GetProjectsAttritionResponseItem)
+
+
+/**
+ * @summary Three behavioral archetypes of employees who left
+ */
+export const GetChurnProfilesResponseItem = zod.object({
+  "name": zod.string(),
+  "count": zod.number(),
+  "pctOfLeavers": zod.number(),
+  "avgSatisfaction": zod.number(),
+  "avgEvaluation": zod.number(),
+  "avgHours": zod.number(),
+  "color": zod.string(),
+  "description": zod.string(),
+  "actionPlan": zod.string()
+})
+export const GetChurnProfilesResponse = zod.array(GetChurnProfilesResponseItem)
+
+
+/**
+ * @summary Average monthly hours by tenure, split by left vs stayed
+ */
+export const GetFatigueCurveResponseItem = zod.object({
+  "tenure": zod.number(),
+  "avgHoursLeft": zod.number(),
+  "avgHoursStayed": zod.number()
+})
+export const GetFatigueCurveResponse = zod.array(GetFatigueCurveResponseItem)
+
+
+/**
+ * @summary Average evaluation score per department split by left vs stayed
+ */
+export const GetDeptBrainDrainResponseItem = zod.object({
+  "department": zod.string(),
+  "avgEvalLeft": zod.number(),
+  "avgEvalStayed": zod.number(),
+  "leftCount": zod.number(),
+  "stayedCount": zod.number()
+})
+export const GetDeptBrainDrainResponse = zod.array(GetDeptBrainDrainResponseItem)
 
 

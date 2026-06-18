@@ -119,11 +119,17 @@ function DeptBarsCanvas({ data }: DeptBarsProps) {
 }
 
 export default function DeptBars({ data }: DeptBarsProps) {
+  const fallbackData = data.map(d => ({
+    department: d.department,
+    attritionRate: d.attritionRate,
+    leftCount: d.left,
+    totalCount: d.total,
+  }));
   if (!isWebGLAvailable()) {
-    return <DeptBarsFallback data={data} />;
+    return <DeptBarsFallback data={fallbackData} />;
   }
   return (
-    <WebGLBoundary fallback={<DeptBarsFallback data={data} />}>
+    <WebGLBoundary fallback={<DeptBarsFallback data={fallbackData} />}>
       <DeptBarsCanvas data={data} />
     </WebGLBoundary>
   );

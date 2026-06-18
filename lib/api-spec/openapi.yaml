@@ -126,7 +126,7 @@ paths:
     get:
       operationId: getScatterSample
       tags: [hr]
-      summary: Sampled satisfaction vs evaluation scatter data
+      summary: Sampled satisfaction vs evaluation scatter data with cluster labels
       responses:
         "200":
           description: Scatter plot sample
@@ -164,6 +164,48 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ProjectsAttrition"
+  /hr/churn-profiles:
+    get:
+      operationId: getChurnProfiles
+      tags: [hr]
+      summary: Three behavioral archetypes of employees who left
+      responses:
+        "200":
+          description: Churn profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChurnProfile"
+  /hr/fatigue-curve:
+    get:
+      operationId: getFatigueCurve
+      tags: [hr]
+      summary: Average monthly hours by tenure, split by left vs stayed
+      responses:
+        "200":
+          description: Fatigue curve data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FatigueCurvePoint"
+  /hr/dept-brain-drain:
+    get:
+      operationId: getDeptBrainDrain
+      tags: [hr]
+      summary: Average evaluation score per department split by left vs stayed
+      responses:
+        "200":
+          description: Department brain drain data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeptBrainDrain"
 
 components:
   schemas:
@@ -320,6 +362,7 @@ components:
         - evaluation
         - left
         - hours
+        - cluster
       properties:
         satisfaction:
           type: number
@@ -329,6 +372,8 @@ components:
           type: integer
         hours:
           type: integer
+        cluster:
+          type: string
     DepartmentDeep:
       type: object
       required:
@@ -376,3 +421,66 @@ components:
           type: number
         avgHours:
           type: number
+    ChurnProfile:
+      type: object
+      required:
+        - name
+        - count
+        - pctOfLeavers
+        - avgSatisfaction
+        - avgEvaluation
+        - avgHours
+        - color
+        - description
+        - actionPlan
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+        pctOfLeavers:
+          type: number
+        avgSatisfaction:
+          type: number
+        avgEvaluation:
+          type: number
+        avgHours:
+          type: number
+        color:
+          type: string
+        description:
+          type: string
+        actionPlan:
+          type: string
+    FatigueCurvePoint:
+      type: object
+      required:
+        - tenure
+        - avgHoursLeft
+        - avgHoursStayed
+      properties:
+        tenure:
+          type: integer
+        avgHoursLeft:
+          type: number
+        avgHoursStayed:
+          type: number
+    DeptBrainDrain:
+      type: object
+      required:
+        - department
+        - avgEvalLeft
+        - avgEvalStayed
+        - leftCount
+        - stayedCount
+      properties:
+        department:
+          type: string
+        avgEvalLeft:
+          type: number
+        avgEvalStayed:
+          type: number
+        leftCount:
+          type: integer
+        stayedCount:
+          type: integer

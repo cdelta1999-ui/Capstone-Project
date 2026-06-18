@@ -6,7 +6,7 @@ import {
   useGetRiskFactors,
 } from "@workspace/api-client-react";
 import { AlertCircle, Clock, Briefcase, Users, TrendingDown, Printer } from "lucide-react";
-import { SalaryDonut, TenureLineArea } from "@/components/DashboardCharts";
+import { SalaryChurnBar, TenureAttritionLine } from "@/components/DashboardCharts";
 import {
   ResponsiveContainer,
   BarChart,
@@ -197,11 +197,11 @@ export default function InsightReport() {
           <div className="grid grid-cols-2 gap-4">
             <div className="border border-slate-200 rounded p-3">
               <p className="text-xs font-semibold text-slate-600 mb-1 text-center">Attrition by Salary Band</p>
-              <div className="h-[170px]">{salaryAttr && <SalaryDonut data={salaryAttr} />}</div>
+              <div className="h-[170px]">{salaryAttr && <SalaryChurnBar data={salaryAttr} />}</div>
             </div>
             <div className="border border-slate-200 rounded p-3">
               <p className="text-xs font-semibold text-slate-600 mb-1 text-center">Tenure vs Attrition Rate</p>
-              <div className="h-[170px]">{tenureAttr && <TenureLineArea data={tenureAttr} />}</div>
+              <div className="h-[170px]">{tenureAttr && <TenureAttritionLine data={tenureAttr} />}</div>
             </div>
           </div>
         </section>

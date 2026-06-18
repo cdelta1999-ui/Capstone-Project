@@ -6,8 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './churnProfile';
 export * from './departmentAttrition';
 export * from './departmentDeep';
+export * from './deptBrainDrain';
+export * from './fatigueCurvePoint';
 export * from './healthStatus';
 export * from './hoursProjects';
 export * from './hrSummary';

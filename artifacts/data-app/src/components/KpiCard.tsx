@@ -9,6 +9,7 @@ interface KpiCardProps {
   decimals?: number;
   gradient: string;
   delay?: number;
+  compact?: boolean;
 }
 
 export default function KpiCard({
@@ -19,47 +20,36 @@ export default function KpiCard({
   decimals = 0,
   gradient,
   delay = 0,
+  compact = false,
 }: KpiCardProps) {
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
     let startTime: number;
-    const duration = 1500; // ms
-    
+    const duration = 1200;
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
-      
-      // easeOutQuart
       const easeProgress = 1 - Math.pow(1 - progress, 4);
       setDisplayValue(value * easeProgress);
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
+      if (progress < 1) requestAnimationFrame(animate);
     };
-    
-    const timeout = setTimeout(() => {
-      requestAnimationFrame(animate);
-    }, delay * 1000);
-    
+    const timeout = setTimeout(() => requestAnimationFrame(animate), delay * 1000);
     return () => clearTimeout(timeout);
   }, [value, delay]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay }}
-      className={`relative overflow-hidden rounded-2xl p-6 shadow-sm border border-white/40 backdrop-blur-sm bg-gradient-to-br ${gradient}`}
+      transition={{ duration: 0.45, delay }}
+      className={`relative overflow-hidden rounded-2xl border border-white/40 shadow-sm bg-gradient-to-br ${gradient} ${compact ? "p-3" : "p-5"}`}
     >
       <div className="absolute inset-0 bg-white/40" />
       <div className="relative z-10">
-        <h3 className="text-sm font-medium text-slate-700 mb-2">{title}</h3>
-        <div className="text-3xl font-bold text-slate-900 tracking-tight">
-          {prefix}
-          {displayValue.toFixed(decimals)}
-          {suffix}
+        <p className={`font-medium text-slate-600 ${compact ? "text-[10px] uppercase tracking-wide mb-0.5" : "text-sm mb-1.5"}`}>{title}</p>
+        <div className={`font-bold text-slate-900 tracking-tight ${compact ? "text-lg" : "text-3xl"}`}>
+          {prefix}{displayValue.toFixed(decimals)}{suffix}
         </div>
       </div>
     </motion.div>

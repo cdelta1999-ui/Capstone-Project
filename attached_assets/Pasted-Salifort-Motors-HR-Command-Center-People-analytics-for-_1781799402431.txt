@@ -1,0 +1,302 @@
+Salifort Motors
+HR Command Center
+
+People analytics for 14,999 employees — making the $33B cost of attrition actionable
+
+Refresh
+
+
+Total Employees
+
+14,999
+
+in workforce
+
+Churn Rate
+
+23.8%
+
+3,571 employees left
+
+Avg Satisfaction
+
+0.61
+
+out of 1.0
+
+Avg Evaluation
+
+0.72
+
+performance score
+
+Avg Monthly Hours
+
+201h
+
+per employee
+
+Work Accidents
+
+14.5%
+
+of workforce
+
+Promotion Rate
+
+2.1%
+
+last 5 years
+
+Avg Tenure
+
+3.5yr
+
+at company
+
+Attrition Flow
+Where 3,571 leavers came from — visualized as a Sankey diagram
+
+Attrition Flow: Where Did 3,571 Employees Go?
+Sankey flow — workforce splits into stayed vs. leaver profiles
+
+All Employees
+14,999
+Stayed (76.2%)
+11,428
+Left (23.8%)
+3,571
+Burned Out Stars
+1,784
+Unhappy Under...
+6
+Apathetic Middle
+1,574
+Other Leavers
+207
+The Three Profiles of Churn
+Every leaver belongs to one of three distinct behavioral archetypes
+
+Burned Out Stars
+1,784employees • 50% of leavers
+Satisfaction
+
+0.46
+
+Evaluation
+
+0.90
+
+Avg Hours
+
+260h
+
+High performers crushed by overwork. Top evaluations but near-zero satisfaction. Working 250+ hrs/month.
+
+Action Plan
+Immediate workload reduction. Project cap at 4. Mandatory PTO. Senior mentorship programs.
+
+Unhappy Underperformers
+6employees • 0.2% of leavers
+Satisfaction
+
+0.12
+
+Evaluation
+
+0.54
+
+Avg Hours
+
+205h
+
+Low satisfaction paired with poor performance reviews. Often on 2 projects only — under-utilized.
+
+Action Plan
+1:1 career development sessions. Role reassignment to better-fit teams. Structured performance improvement plans.
+
+Apathetic Middle
+1,574employees • 44.1% of leavers
+Satisfaction
+
+0.41
+
+Evaluation
+
+0.51
+
+Avg Hours
+
+147h
+
+Average performers with moderate but declining satisfaction. Promotions and recognition gaps.
+
+Action Plan
+Clear career path visibility. Promotion criteria transparency. Salary reviews for those at 3+ years.
+
+Root Cause Analysis
+The mechanics behind why employees leave — U-curve, clusters, and overwork
+
+The U-Curve: Churn by Project Count
+Sweet spot: 3–5 projects — under or overloaded = high churn
+
+CSV
+2
+3
+4
+5
+6
+7
+# Projects
+0%
+25%
+50%
+75%
+100%
+Avg
+65.62%
+1.78%
+9.37%
+22.17%
+55.79%
+100%
+The Three Churn Profiles
+Evaluation vs. Satisfaction — three distinct leaver clusters
+
+CSV
+0
+0.25
+0.5
+0.75
+1
+Satisfaction Level
+0
+0.25
+0.5
+0.75
+1
+Evaluation
+x=0.46
+StayedApathetic MiddleUnhappy UnderperformersBurned Out Stars
+The Fatigue Curve: Hours by Tenure
+Leavers work dramatically more hours at the 4–5 year mark
+
+CSV
+2
+3
+4
+5
+6
+7
+8
+10
+Years at Company
+0
+80
+160
+310
+Avg Hours/Mo
+Avg Hours (Left)Avg Hours (Stayed)
+Hours vs. Satisfaction Landscape
+Overworked and underutilized employees both churn
+
+CSV
+80
+140
+200
+260
+320
+Avg Monthly Hours
+0
+0.25
+0.5
+0.75
+1
+Satisfaction
+StayedLeft
+Organizational Breakdown
+Which departments, salary bands, and seniority levels are most exposed
+
+Churn Rate by Department
+% of employees who left each department
+
+CSV
+0%
+8%
+16%
+24%
+32%
+hr
+accounting
+technical
+support
+sales
+marketing
+IT
+product_mng
+RandD
+management
+Churn Rate %Avg Satisfaction
+Satisfaction Level Distribution
+Bimodal leaver pattern — very low AND very high satisfaction churn
+
+CSV
+0.0-0.1
+0.1-0.2
+0.2-0.3
+0.3-0.4
+0.4-0.5
+0.5-0.6
+0.6-0.7
+0.7-0.8
+0.8-0.9
+0.9-1.0
+0
+600
+1200
+1800
+2400
+StayedLeft
+Departmental Brain Drain
+Key finding: Leavers score higher on evaluations — losing best performers, not weakest
+
+CSV
+product_mng
+RandD
+IT
+technical
+support
+sales
+management
+accounting
+marketing
+hr
+0.5
+0.65
+0.8
+1
+Median Eval (Left)Median Eval (Stayed)
+Churn Rate by Salary Band
+Low earners churn at dramatically higher rates
+
+CSV
+Low
+Medium
+High
+0%
+8%
+16%
+24%
+32%
+29.69%
+20.43%
+6.63%
+ML Model: Feature Importance
+Top predictors of churn (Random Forest)
+
+CSV
+0%
+8%
+16%
+24%
+32%
