@@ -24,8 +24,8 @@ interface DeptBarsProps {
 
 function Bar({ data, index, total, baseColor }: { data: DepartmentAttrition; index: number; total: number; baseColor: string }) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const scaleRef = useRef(0);
   const [hovered, setHovered] = useState(false);
-  const [scaleY, setScaleY] = useState(0);
 
   const targetHeight = Math.max(data.attritionRate * 0.15, 0.2);
   const angle = (index / total) * Math.PI * 2;
@@ -38,11 +38,12 @@ function Bar({ data, index, total, baseColor }: { data: DepartmentAttrition; ind
     ? "#" + new THREE.Color(baseColor).lerp(new THREE.Color("#ffffff"), 0.3).getHexString()
     : baseColor;
 
+  // Animate via the mesh transform directly — no per-frame React re-render.
   useFrame((_, delta) => {
     if (meshRef.current) {
-      setScaleY((prev) => THREE.MathUtils.lerp(prev, targetHeight, delta * 3));
-      meshRef.current.scale.y = scaleY;
-      meshRef.current.position.y = scaleY / 2;
+      scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetHeight, delta * 3);
+      meshRef.current.scale.y = scaleRef.current;
+      meshRef.current.position.y = scaleRef.current / 2;
     }
   });
 
@@ -65,7 +66,7 @@ function Bar({ data, index, total, baseColor }: { data: DepartmentAttrition; ind
         />
       </mesh>
 
-      <Html position={[0, Math.max(scaleY, 0.3) + 0.6, 0]} center zIndexRange={[100, 0]}>
+      <Html position={[0, Math.max(targetHeight, 0.3) + 0.6, 0]} center zIndexRange={[100, 0]}>
         <div className={`transition-all duration-300 pointer-events-none flex flex-col items-center ${hovered ? "opacity-100 scale-110" : "opacity-75 scale-100"}`}>
           <div className="bg-white/90 backdrop-blur-md px-2 py-1 rounded-md shadow-sm border border-slate-100 text-xs font-semibold whitespace-nowrap text-slate-800">
             {data.department}

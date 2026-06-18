@@ -1,0 +1,1 @@
+- [WebGL/3D charts](webgl-charts.md) — every r3f chart needs a WebGLBoundary + 2D fallback; animate via refs not per-frame setState; screenshots always show the fallback.

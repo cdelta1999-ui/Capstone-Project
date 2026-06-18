@@ -9,7 +9,7 @@ import {
 } from "recharts";
 import type {
   SalaryAttrition, SatisfactionBucket, ScatterPoint,
-  HoursProjects, TenureAttrition, DepartmentDeep, ProjectsAttrition,
+  HoursProjects, TenureAttrition, ProjectsAttrition,
   RiskFactor, ChurnProfile, FatigueCurvePoint, DeptBrainDrain,
 } from "@workspace/api-client-react";
 
@@ -233,29 +233,6 @@ export function HoursSatisfactionScatter({ data }: { data: ScatterPoint[] }) {
         <Scatter name="Stayed" data={stayedData} fill={C.indigo} opacity={0.2} animationDuration={800} />
         <Scatter name="Left" data={leftData} fill={C.rose} opacity={0.55} animationDuration={800} />
       </ScatterChart>
-    </ResponsiveContainer>
-  );
-}
-
-// ── Dept Churn + Satisfaction overlay ───────────────────────────────────────
-export function DeptChurnComposed({ data }: { data: DepartmentDeep[] }) {
-  const sorted = [...data].sort((a, b) => b.attritionRate - a.attritionRate);
-  const chartData = sorted.map(d => ({
-    dept: d.department.replace("technical", "tech").replace("management", "mgmt").replace("product_mng", "prod"),
-    churn: d.attritionRate,
-    satisfaction: +(d.avgSatisfaction * 100).toFixed(1),
-  }));
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={chartData} layout="vertical" margin={{ top: 4, right: 50, left: 48, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-        <XAxis type="number" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 38]} />
-        <YAxis type="category" dataKey="dept" tick={{ fontSize: 10, fill: "#334155" }} width={44} axisLine={false} tickLine={false} />
-        <Tooltip content={<Tip />} />
-        <Legend iconType="circle" wrapperStyle={{ fontSize: 10 }} />
-        <Bar dataKey="churn" name="Churn %" fill={C.rose} radius={[0, 4, 4, 0]} opacity={0.85} animationDuration={900} />
-        <Line dataKey="satisfaction" name="Avg Sat ×100" stroke={C.teal} strokeWidth={2} dot={{ r: 3 }} animationDuration={1000} />
-      </ComposedChart>
     </ResponsiveContainer>
   );
 }
