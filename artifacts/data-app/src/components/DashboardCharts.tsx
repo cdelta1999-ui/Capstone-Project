@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import {
   Cell, ResponsiveContainer, Tooltip, Legend,
   Area, XAxis, YAxis, CartesianGrid,
@@ -36,6 +37,60 @@ const tickNum = { fontSize: 11, fill: AXIS } as const;
 const tickCat = { fontSize: 11, fill: AXIS_CAT } as const;
 const CURSOR = { fill: "rgba(99, 102, 241, 0.06)" } as const;
 const legendStyle = { fontSize: 11, paddingBottom: 2 } as const;
+const EASE = "ease-out" as const;
+
+// ── Scroll-aware replay ──────────────────────────────────────────────────────
+// Returns a ref + a `replayKey` that bumps whenever the element RE-enters the
+// viewport (after having scrolled away). Crucially it does NOT bump on the first
+// reveal: the chart mounts once and plays its native entrance animation just
+// like before, so the IO callback never remounts a chart while a static snapshot
+// is settling (which would catch it mid-grow at height 0). Respects
+// prefers-reduced-motion by never replaying.
+function useScrollReplay() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { amount: 0.3 });
+  const reduce = useReducedMotion();
+  const [replayKey, setReplayKey] = useState(0);
+  const hasEntered = useRef(false);
+  const hasLeft = useRef(false);
+  useEffect(() => {
+    if (reduce) return;
+    if (inView) {
+      // Replay only on RE-entry, never on the first reveal. `useInView` starts
+      // false before the IntersectionObserver reports, so we gate on
+      // `hasEntered` to avoid a spurious first-view bump (which could remount a
+      // chart while a static snapshot is still settling).
+      if (hasEntered.current && hasLeft.current) {
+        setReplayKey(x => x + 1);
+        hasLeft.current = false;
+      }
+      hasEntered.current = true;
+    } else if (hasEntered.current) {
+      hasLeft.current = true;
+    }
+  }, [inView, reduce]);
+  return { ref, replayKey };
+}
+
+// Wraps a chart so its entrance animation replays each time it scrolls back into
+// view. The wrapper div is always visible (no opacity/transform on it), so print
+// and static snapshots are unaffected — only the chart's own motion re-runs:
+// recharts growth (via the remounting `replayKey`) for bar/line/scatter charts,
+// or the CSS `chart-wipe` for area/time-series charts whose recharts Area
+// animation is disabled (see FatigueCurveChart).
+function ChartFrame({ wipe = false, children }: {
+  wipe?: boolean; children: (replayKey: number) => React.ReactNode;
+}) {
+  const { ref, replayKey } = useScrollReplay();
+  const reduce = useReducedMotion();
+  return (
+    <div ref={ref} className="w-full h-full">
+      {wipe
+        ? <div key={replayKey} className={reduce ? "w-full h-full" : "chart-wipe w-full h-full"}>{children(0)}</div>
+        : children(replayKey)}
+    </div>
+  );
+}
 
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -179,18 +234,20 @@ export function FeatureImportanceBar({ data }: { data: RiskFactor[] }) {
   }));
   const max = chartData[0]?.value ?? 10;
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 52, left: 140, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={GRID} />
-        <XAxis type="number" tick={tickNum} unit="%" domain={[0, Math.ceil(max / 10) * 10]} axisLine={false} tickLine={false} />
-        <YAxis type="category" dataKey="name" tick={tickCat} width={135} axisLine={false} tickLine={false} />
-        <Tooltip content={<Tip />} cursor={CURSOR} />
-        <Bar dataKey="value" name="Importance" unit="%" radius={[0, 5, 5, 0]} barSize={16} animationDuration={900}>
-          {chartData.map((_, i) => <Cell key={i} fill={i === 0 ? C.rose : C.indigo} fillOpacity={i === 0 ? 1 : Math.max(0.4, 0.82 - i * 0.08)} />)}
-          <LabelList dataKey="value" position="right" formatter={(v: any) => `${v}%`} fontSize={11} fill="#475569" fontWeight={600} />
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <ChartFrame wipe>{() => (
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 52, left: 140, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={GRID} />
+          <XAxis type="number" tick={tickNum} unit="%" domain={[0, Math.ceil(max / 10) * 10]} axisLine={false} tickLine={false} />
+          <YAxis type="category" dataKey="name" tick={tickCat} width={135} axisLine={false} tickLine={false} />
+          <Tooltip content={<Tip />} cursor={CURSOR} />
+          <Bar dataKey="value" name="Importance" unit="%" radius={[0, 5, 5, 0]} barSize={16} isAnimationActive={false}>
+            {chartData.map((_, i) => <Cell key={i} fill={i === 0 ? C.rose : C.indigo} fillOpacity={i === 0 ? 1 : Math.max(0.4, 0.82 - i * 0.08)} />)}
+            <LabelList dataKey="value" position="right" formatter={(v: any) => `${v}%`} fontSize={11} fill="#475569" fontWeight={600} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    )}</ChartFrame>
   );
 }
 
@@ -198,19 +255,21 @@ export function FeatureImportanceBar({ data }: { data: RiskFactor[] }) {
 export function UCurveChart({ data }: { data: ProjectsAttrition[] }) {
   const chartData = data.map(d => ({ projects: d.projects, attrition: d.attritionRate, avg: d.avgHours }));
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: -12, bottom: 16 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
-        <XAxis dataKey="projects" tick={tickNum} axisLine={false} tickLine={false} label={{ value: "Number of projects", position: "insideBottom", offset: -6, fontSize: 10, fill: AXIS }} />
-        <YAxis yAxisId="l" tick={tickNum} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 110]} />
-        <YAxis yAxisId="r" orientation="right" tick={tickNum} axisLine={false} tickLine={false} />
-        <Tooltip content={<Tip />} cursor={CURSOR} />
-        <Legend verticalAlign="top" align="right" height={22} iconType="circle" iconSize={8} wrapperStyle={legendStyle} />
-        <ReferenceArea yAxisId="l" x1={3} x2={5} fill={C.teal} fillOpacity={0.07} />
-        <Bar yAxisId="l" dataKey="attrition" name="Churn" unit="%" fill={C.rose} radius={[4, 4, 0, 0]} maxBarSize={40} opacity={0.85} animationDuration={900} />
-        <Line yAxisId="r" type="monotone" dataKey="avg" name="Avg Hours" stroke={C.sky} strokeWidth={2.5} dot={{ r: 3, fill: C.sky, strokeWidth: 0 }} activeDot={{ r: 5 }} animationDuration={1000} />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <ChartFrame wipe>{() => (
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: -12, bottom: 16 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
+          <XAxis dataKey="projects" tick={tickNum} axisLine={false} tickLine={false} label={{ value: "Number of projects", position: "insideBottom", offset: -6, fontSize: 10, fill: AXIS }} />
+          <YAxis yAxisId="l" tick={tickNum} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 110]} />
+          <YAxis yAxisId="r" orientation="right" tick={tickNum} axisLine={false} tickLine={false} />
+          <Tooltip content={<Tip />} cursor={CURSOR} />
+          <Legend verticalAlign="top" align="right" height={22} iconType="circle" iconSize={8} wrapperStyle={legendStyle} />
+          <ReferenceArea yAxisId="l" x1={3} x2={5} fill={C.teal} fillOpacity={0.07} />
+          <Bar yAxisId="l" dataKey="attrition" name="Churn" unit="%" fill={C.rose} radius={[4, 4, 0, 0]} maxBarSize={40} opacity={0.85} isAnimationActive={false} />
+          <Line yAxisId="r" type="monotone" dataKey="avg" name="Avg Hours" stroke={C.sky} strokeWidth={2.5} dot={{ r: 3, fill: C.sky, strokeWidth: 0 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    )}</ChartFrame>
   );
 }
 
@@ -232,75 +291,91 @@ export function ClusterScatter({ data }: { data: ScatterPoint[] }) {
   }, [data]);
   const order = ["Stayed", "Apathetic Middle", "Burned Out Stars", "Unhappy Underperformers"];
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ScatterChart margin={{ top: 4, right: 12, left: -18, bottom: 18 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-        <XAxis type="number" dataKey="satisfaction" name="Satisfaction" domain={[0, 1]} tick={{ fontSize: 10, fill: AXIS }} axisLine={false} tickLine={false}
-          label={{ value: "Satisfaction", position: "insideBottom", offset: -8, fontSize: 10, fill: AXIS }} />
-        <YAxis type="number" dataKey="evaluation" name="Evaluation" domain={[0.3, 1]} tick={{ fontSize: 10, fill: AXIS }} axisLine={false} tickLine={false}
-          label={{ value: "Evaluation", angle: -90, position: "insideLeft", offset: 14, fontSize: 10, fill: AXIS }} />
-        <ZAxis range={[11, 11]} />
-        <Tooltip cursor={{ strokeDasharray: "3 3" }} content={<Tip />} />
-        <Legend verticalAlign="top" align="right" height={20} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 9.5 }} />
-        {order.filter(k => groups[k]?.length).map(k => (
-          <Scatter key={k} name={k} data={groups[k]} fill={CLUSTER_COLORS[k]} opacity={k === "Stayed" ? 0.22 : 0.7} animationDuration={800} />
-        ))}
-      </ScatterChart>
-    </ResponsiveContainer>
+    <ChartFrame>{(k) => (
+      <ResponsiveContainer width="100%" height="100%">
+        <ScatterChart key={k} margin={{ top: 4, right: 12, left: -18, bottom: 18 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis type="number" dataKey="satisfaction" name="Satisfaction" domain={[0, 1]} tick={{ fontSize: 10, fill: AXIS }} axisLine={false} tickLine={false}
+            label={{ value: "Satisfaction", position: "insideBottom", offset: -8, fontSize: 10, fill: AXIS }} />
+          <YAxis type="number" dataKey="evaluation" name="Evaluation" domain={[0.3, 1]} tick={{ fontSize: 10, fill: AXIS }} axisLine={false} tickLine={false}
+            label={{ value: "Evaluation", angle: -90, position: "insideLeft", offset: 14, fontSize: 10, fill: AXIS }} />
+          <ZAxis range={[11, 11]} />
+          <Tooltip cursor={{ strokeDasharray: "3 3" }} content={<Tip />} />
+          <Legend verticalAlign="top" align="right" height={20} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 9.5 }} />
+          {order.filter(key => groups[key]?.length).map((key, idx) => (
+            <Scatter key={key} name={key} data={groups[key]} fill={CLUSTER_COLORS[key]} opacity={key === "Stayed" ? 0.22 : 0.7} animationBegin={idx * 120} animationDuration={800} animationEasing={EASE} />
+          ))}
+        </ScatterChart>
+      </ResponsiveContainer>
+    )}</ChartFrame>
   );
 }
 
 // ── Fatigue Curve ────────────────────────────────────────────────────────────
+// recharts 2.15 Area reveal animation is disabled here (its clipPath can collapse
+// the whole series group on fast/headless paints, blanking the Area AND its
+// sibling Line). Motion instead comes from the ChartFrame `wipe` — a CSS
+// left-to-right clip reveal that ends fully visible, so it is screenshot/print-safe.
 export function FatigueCurveChart({ data }: { data: FatigueCurvePoint[] }) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 4, right: 12, left: -12, bottom: 16 }}>
-        <defs>
-          <linearGradient id="fadeLeft" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={C.rose} stopOpacity={0.25} />
-            <stop offset="95%" stopColor={C.rose} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
-        <XAxis dataKey="tenure" tick={tickNum} axisLine={false} tickLine={false}
-          label={{ value: "Years at company", position: "insideBottom", offset: -6, fontSize: 10, fill: AXIS }} />
-        <YAxis tick={tickNum} axisLine={false} tickLine={false} domain={[100, 310]} />
-        <Tooltip content={<Tip />} cursor={{ stroke: AXIS, strokeDasharray: "3 3" }} />
-        <Legend verticalAlign="top" align="right" height={22} iconType="circle" iconSize={8} wrapperStyle={legendStyle} />
-        <ReferenceArea x1={4} x2={5} fill={C.rose} fillOpacity={0.06} />
-        {/* isAnimationActive=false: recharts 2.15 Area reveal clipPath can collapse the whole
-            series group on fast/headless paints, blanking both the Area and its sibling Line. */}
-        <Area type="monotone" dataKey="avgHoursLeft" name="Avg Hours (Left)" stroke={C.rose} strokeWidth={2.5}
-          fill="url(#fadeLeft)" dot={{ r: 3, fill: C.rose, strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls isAnimationActive={false} />
-        <Line type="monotone" dataKey="avgHoursStayed" name="Avg Hours (Stayed)" stroke={C.indigo} strokeWidth={2}
-          strokeDasharray="5 3" dot={{ r: 3, fill: C.indigo, strokeWidth: 0 }} activeDot={{ r: 5 }} isAnimationActive={false} />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <ChartFrame wipe>{() => (
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 4, right: 12, left: -12, bottom: 16 }}>
+          <defs>
+            <linearGradient id="fadeLeft" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={C.rose} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={C.rose} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
+          <XAxis dataKey="tenure" tick={tickNum} axisLine={false} tickLine={false}
+            label={{ value: "Years at company", position: "insideBottom", offset: -6, fontSize: 10, fill: AXIS }} />
+          <YAxis tick={tickNum} axisLine={false} tickLine={false} domain={[100, 310]} />
+          <Tooltip content={<Tip />} cursor={{ stroke: AXIS, strokeDasharray: "3 3" }} />
+          <Legend verticalAlign="top" align="right" height={22} iconType="circle" iconSize={8} wrapperStyle={legendStyle} />
+          <ReferenceArea x1={4} x2={5} fill={C.rose} fillOpacity={0.06} />
+          <Area type="monotone" dataKey="avgHoursLeft" name="Avg Hours (Left)" stroke={C.rose} strokeWidth={2.5}
+            fill="url(#fadeLeft)" dot={{ r: 3, fill: C.rose, strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls isAnimationActive={false} />
+          <Line type="monotone" dataKey="avgHoursStayed" name="Avg Hours (Stayed)" stroke={C.indigo} strokeWidth={2}
+            strokeDasharray="5 3" dot={{ r: 3, fill: C.indigo, strokeWidth: 0 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    )}</ChartFrame>
   );
 }
 
 // ── Satisfaction Distribution Bimodal ───────────────────────────────────────
 export function SatisfactionDistBar({ data }: { data: SatisfactionBucket[] }) {
+  // Stacked bars are revealed with the screenshot-safe CSS wipe (recharts
+  // animation off) — same approach as the area charts. The native stacked-bar
+  // grow animation left this chart blank when captured mid-entrance.
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 0, right: 10, left: -18, bottom: 20 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
-        <XAxis dataKey="bucket" tick={{ fontSize: 9, fill: AXIS }} angle={-35} textAnchor="end" interval={0} height={42} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 10, fill: AXIS }} axisLine={false} tickLine={false} />
-        <Tooltip content={<Tip />} cursor={CURSOR} />
-        <Legend verticalAlign="top" align="right" height={20} iconType="circle" iconSize={8} wrapperStyle={legendStyle} />
-        <Bar dataKey="stayed" name="Stayed" stackId="a" fill={C.indigo} opacity={0.85} maxBarSize={46} animationDuration={900} />
-        <Bar dataKey="left" name="Left" stackId="a" fill={C.rose} opacity={0.9} radius={[3, 3, 0, 0]} maxBarSize={46} animationDuration={900} />
-      </BarChart>
-    </ResponsiveContainer>
+    <ChartFrame wipe>{() => (
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 0, right: 10, left: -18, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
+          <XAxis dataKey="bucket" tick={{ fontSize: 9, fill: AXIS }} angle={-35} textAnchor="end" interval={0} height={42} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: AXIS }} axisLine={false} tickLine={false} />
+          <Tooltip content={<Tip />} cursor={CURSOR} />
+          <Legend verticalAlign="top" align="right" height={20} iconType="circle" iconSize={8} wrapperStyle={legendStyle} />
+          <Bar dataKey="stayed" name="Stayed" stackId="a" fill={C.indigo} opacity={0.85} maxBarSize={46} isAnimationActive={false} />
+          <Bar dataKey="left" name="Left" stackId="a" fill={C.rose} opacity={0.9} radius={[3, 3, 0, 0]} maxBarSize={46} isAnimationActive={false} />
+        </BarChart>
+      </ResponsiveContainer>
+    )}</ChartFrame>
   );
 }
 
 // ── Dept Brain Drain (dumbbell) ──────────────────────────────────────────────
 // Each department is a row: the connector spans the evaluation gap between
 // stayers (indigo) and leavers (rose). Sorted by gap so the worst brain drain —
-// where the people leaving out-perform those who stay — sits on top.
+// where the people leaving out-perform those who stay — sits on top. The
+// connectors draw and the dots pop in with a per-row stagger, and the whole
+// assembly replays whenever the chart scrolls back into view.
 export function DeptBrainDrainChart({ data }: { data: DeptBrainDrain[] }) {
+  const { ref, replayKey: k } = useScrollReplay();
+  const reduce = useReducedMotion();
+
   const rows = [...data]
     .map(d => ({
       dept: d.department
@@ -332,8 +407,10 @@ export function DeptBrainDrainChart({ data }: { data: DeptBrainDrain[] }) {
   const ticks: number[] = [];
   for (let t = dMin; t <= dMax + 1e-9; t += 0.1) ticks.push(+t.toFixed(1));
 
+  const dotStyle = { transformBox: "fill-box", transformOrigin: "center" } as const;
+
   return (
-    <div className="w-full h-full flex flex-col">
+    <div ref={ref} className="w-full h-full flex flex-col">
       <div className="flex items-center justify-end gap-3 text-[9px] text-slate-500 mb-0.5 pr-1">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ background: C.indigo }} />Stayers</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ background: C.rose }} />Leavers</span>
@@ -351,12 +428,33 @@ export function DeptBrainDrainChart({ data }: { data: DeptBrainDrain[] }) {
           const cy = padTop + i * rowH + rowH / 2;
           const xs = sx(r.stayed);
           const xl = sx(r.left);
+          const delay = i * 0.06;
           return (
-            <g key={r.dept}>
+            <g key={`${k}-${r.dept}`}>
               <text x={labelW - 8} y={cy + 3} fontSize={9.5} fill={AXIS_CAT} textAnchor="end">{r.dept}</text>
-              <line x1={Math.min(xs, xl)} x2={Math.max(xs, xl)} y1={cy} y2={cy} stroke="#cbd5e1" strokeWidth={2.5} strokeLinecap="round" />
-              <circle cx={xs} cy={cy} r={4} fill={C.indigo}><title>{`${r.dept} · stayers ${r.stayed}`}</title></circle>
-              <circle cx={xl} cy={cy} r={4} fill={C.rose}><title>{`${r.dept} · leavers ${r.left}`}</title></circle>
+              <motion.line
+                x1={Math.min(xs, xl)} x2={Math.max(xs, xl)} y1={cy} y2={cy}
+                stroke="#cbd5e1" strokeWidth={2.5} strokeLinecap="round"
+                initial={reduce ? false : { pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 0.45, delay, ease: "easeOut" }}
+              />
+              <motion.circle
+                cx={xs} cy={cy} r={4} fill={C.indigo} style={dotStyle}
+                initial={reduce ? false : { scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3, delay: delay + 0.12, ease: "backOut" }}
+              >
+                <title>{`${r.dept} · stayers ${r.stayed}`}</title>
+              </motion.circle>
+              <motion.circle
+                cx={xl} cy={cy} r={4} fill={C.rose} style={dotStyle}
+                initial={reduce ? false : { scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3, delay: delay + 0.2, ease: "backOut" }}
+              >
+                <title>{`${r.dept} · leavers ${r.left}`}</title>
+              </motion.circle>
             </g>
           );
         })}
@@ -375,46 +473,51 @@ export function SalaryChurnBar({ data }: { data: SalaryAttrition[] }) {
       churn: d.attritionRate,
     }));
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={chartData} margin={{ top: 18, right: 14, left: -10, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
-        <XAxis dataKey="salary" tick={{ fontSize: 12, fill: AXIS_CAT }} axisLine={false} tickLine={false} />
-        <YAxis tick={tickNum} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 35]} />
-        <Tooltip content={<Tip />} cursor={CURSOR} />
-        <Bar dataKey="churn" name="Churn" unit="%" radius={[6, 6, 0, 0]} maxBarSize={56} animationDuration={900}>
-          <Cell fill={C.rose} />
-          <Cell fill={C.amber} />
-          <Cell fill={C.teal} />
-          <LabelList dataKey="churn" position="top" formatter={(v: any) => `${v}%`} fontSize={11} fill="#475569" fontWeight={600} />
-        </Bar>
-        <ReferenceLine y={23.8} stroke={C.slate} strokeDasharray="4 3" label={{ value: "Company avg 23.8%", fontSize: 9.5, fill: C.slate, position: "insideTopRight" }} />
-      </BarChart>
-    </ResponsiveContainer>
+    <ChartFrame wipe>{() => (
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} margin={{ top: 18, right: 14, left: -10, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
+          <XAxis dataKey="salary" tick={{ fontSize: 12, fill: AXIS_CAT }} axisLine={false} tickLine={false} />
+          <YAxis tick={tickNum} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} domain={[0, 35]} />
+          <Tooltip content={<Tip />} cursor={CURSOR} />
+          <Bar dataKey="churn" name="Churn" unit="%" radius={[6, 6, 0, 0]} maxBarSize={56} isAnimationActive={false}>
+            <Cell fill={C.rose} />
+            <Cell fill={C.amber} />
+            <Cell fill={C.teal} />
+            <LabelList dataKey="churn" position="top" formatter={(v: any) => `${v}%`} fontSize={11} fill="#475569" fontWeight={600} />
+          </Bar>
+          <ReferenceLine y={23.8} stroke={C.slate} strokeDasharray="4 3" label={{ value: "Company avg 23.8%", fontSize: 9.5, fill: C.slate, position: "insideTopRight" }} />
+        </BarChart>
+      </ResponsiveContainer>
+    )}</ChartFrame>
   );
 }
 
 // ── Tenure Attrition Line ────────────────────────────────────────────────────
+// Area animation disabled (see FatigueCurveChart); motion comes from the
+// ChartFrame `wipe` reveal so the chart never renders blank.
 export function TenureAttritionLine({ data }: { data: TenureAttrition[] }) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 4, right: 28, left: -10, bottom: 0 }}>
-        <defs>
-          <linearGradient id="tenureGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={C.sky} stopOpacity={0.25} />
-            <stop offset="95%" stopColor={C.sky} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
-        <XAxis dataKey="tenure" tick={tickNum} axisLine={false} tickLine={false} />
-        <YAxis yAxisId="l" tick={tickNum} axisLine={false} tickLine={false} />
-        <YAxis yAxisId="r" orientation="right" tick={tickNum} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
-        <Tooltip content={<Tip />} cursor={{ stroke: AXIS, strokeDasharray: "3 3" }} />
-        <Legend verticalAlign="top" align="right" height={22} iconType="circle" iconSize={8} wrapperStyle={legendStyle} />
-        {/* isAnimationActive=false: see FatigueCurveChart — recharts 2.15 Area animation blanks the series group. */}
-        <Area yAxisId="l" type="monotone" dataKey="total" name="Total" fill="url(#tenureGrad)" stroke="none" isAnimationActive={false} />
-        <Line yAxisId="r" type="monotone" dataKey="attritionRate" name="Churn" unit="%" stroke={C.rose} strokeWidth={2.5} dot={{ r: 3, fill: C.rose, strokeWidth: 0 }} activeDot={{ r: 5 }} isAnimationActive={false} />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <ChartFrame wipe>{() => (
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 4, right: 28, left: -10, bottom: 0 }}>
+          <defs>
+            <linearGradient id="tenureGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={C.sky} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={C.sky} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
+          <XAxis dataKey="tenure" tick={tickNum} axisLine={false} tickLine={false} />
+          <YAxis yAxisId="l" tick={tickNum} axisLine={false} tickLine={false} />
+          <YAxis yAxisId="r" orientation="right" tick={tickNum} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+          <Tooltip content={<Tip />} cursor={{ stroke: AXIS, strokeDasharray: "3 3" }} />
+          <Legend verticalAlign="top" align="right" height={22} iconType="circle" iconSize={8} wrapperStyle={legendStyle} />
+          <Area yAxisId="l" type="monotone" dataKey="total" name="Total" fill="url(#tenureGrad)" stroke="none" isAnimationActive={false} />
+          <Line yAxisId="r" type="monotone" dataKey="attritionRate" name="Churn" unit="%" stroke={C.rose} strokeWidth={2.5} dot={{ r: 3, fill: C.rose, strokeWidth: 0 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    )}</ChartFrame>
   );
 }
 
@@ -427,16 +530,18 @@ export function DeptAttritionBar({ data }: { data: Array<{ department: string; a
     rate: +d.attritionRate.toFixed(1),
   }));
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={chartData} margin={{ top: 4, right: 10, left: -10, bottom: 55 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
-        <XAxis dataKey="name" tick={{ fontSize: 10, fill: AXIS_CAT }} angle={-35} textAnchor="end" interval={0} axisLine={false} tickLine={false} />
-        <YAxis tick={tickNum} unit="%" domain={[0, 35]} axisLine={false} tickLine={false} />
-        <Tooltip content={<Tip />} cursor={CURSOR} />
-        <Bar dataKey="rate" name="Churn" unit="%" radius={[5, 5, 0, 0]} animationDuration={900}>
-          {chartData.map((_, i) => <Cell key={i} fill={DEPT_PALETTE[i % DEPT_PALETTE.length]} />)}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <ChartFrame wipe>{() => (
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} margin={{ top: 4, right: 10, left: -10, bottom: 55 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
+          <XAxis dataKey="name" tick={{ fontSize: 10, fill: AXIS_CAT }} angle={-35} textAnchor="end" interval={0} axisLine={false} tickLine={false} />
+          <YAxis tick={tickNum} unit="%" domain={[0, 35]} axisLine={false} tickLine={false} />
+          <Tooltip content={<Tip />} cursor={CURSOR} />
+          <Bar dataKey="rate" name="Churn" unit="%" radius={[5, 5, 0, 0]} isAnimationActive={false}>
+            {chartData.map((_, i) => <Cell key={i} fill={DEPT_PALETTE[i % DEPT_PALETTE.length]} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    )}</ChartFrame>
   );
 }

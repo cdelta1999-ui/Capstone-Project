@@ -369,9 +369,19 @@
 @keyframes sankeyFlow { to { stroke-dashoffset: -28; } }
 .sankey-flow { stroke-dasharray: 5 9; animation: sankeyFlow 1.2s linear infinite; }
 
+/* ── Chart entrance: left-to-right wipe (area / time-series charts) ───────── */
+/* Ends fully visible (`both` holds the final frame), so static snapshots and
+   print are unaffected — see ChartFrame in DashboardCharts.tsx. */
+@keyframes chartWipe {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+.chart-wipe { animation: chartWipe 1.05s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob { animation: none; }
   .sankey-flow { animation: none; }
+  .chart-wipe { animation: none; clip-path: none; }
 }
 
 @media print {
@@ -386,6 +396,7 @@
     --card-border: 214 32% 91%; --muted-foreground: 215 16% 47%;
   }
   .shadcn-card { box-shadow: none !important; border: 1px solid #d1d5db !important; break-inside: avoid; margin-top: 0.3in; }
+  .chart-wipe { animation: none !important; clip-path: none !important; }
   .recharts-responsive-container { display: flex !important; justify-content: center !important; break-inside: avoid; }
   [data-radix-scroll-area-viewport] { overflow: visible !important; max-height: none !important; height: auto !important; }
   .overflow-auto, .overflow-y-auto, .overflow-scroll, .overflow-y-scroll { overflow: visible !important; max-height: none !important; }
