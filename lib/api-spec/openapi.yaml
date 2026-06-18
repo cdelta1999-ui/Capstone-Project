@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Salifort Motors HR Analytics API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: hr
+    description: HR Analytics operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,145 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /hr/summary:
+    get:
+      operationId: getHrSummary
+      tags: [hr]
+      summary: Overall HR KPI summary
+      responses:
+        "200":
+          description: Summary KPIs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HrSummary"
+  /hr/attrition-by-department:
+    get:
+      operationId: getAttritionByDepartment
+      tags: [hr]
+      summary: Attrition breakdown by department
+      responses:
+        "200":
+          description: Department attrition data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentAttrition"
+  /hr/attrition-by-salary:
+    get:
+      operationId: getAttritionBySalary
+      tags: [hr]
+      summary: Attrition breakdown by salary band
+      responses:
+        "200":
+          description: Salary attrition data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SalaryAttrition"
+  /hr/satisfaction-distribution:
+    get:
+      operationId: getSatisfactionDistribution
+      tags: [hr]
+      summary: Satisfaction level distribution bucketed by left status
+      responses:
+        "200":
+          description: Satisfaction distribution
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SatisfactionBucket"
+  /hr/hours-projects:
+    get:
+      operationId: getHoursProjects
+      tags: [hr]
+      summary: Average hours vs projects by left status
+      responses:
+        "200":
+          description: Hours and projects data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HoursProjects"
+  /hr/tenure-attrition:
+    get:
+      operationId: getTenureAttrition
+      tags: [hr]
+      summary: Attrition rate by years at company (tenure)
+      responses:
+        "200":
+          description: Tenure attrition data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TenureAttrition"
+  /hr/risk-factors:
+    get:
+      operationId: getRiskFactors
+      tags: [hr]
+      summary: Top predictive risk factors for attrition
+      responses:
+        "200":
+          description: Risk factor importances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RiskFactor"
+  /hr/scatter-sample:
+    get:
+      operationId: getScatterSample
+      tags: [hr]
+      summary: Sampled satisfaction vs evaluation scatter data
+      responses:
+        "200":
+          description: Scatter plot sample
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScatterPoint"
+  /hr/department-deep:
+    get:
+      operationId: getDepartmentDeep
+      tags: [hr]
+      summary: Detailed stats per department including avg satisfaction, hours, and evaluation
+      responses:
+        "200":
+          description: Department deep stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentDeep"
+  /hr/projects-attrition:
+    get:
+      operationId: getProjectsAttrition
+      tags: [hr]
+      summary: Attrition rate by number of projects
+      responses:
+        "200":
+          description: Projects attrition data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectsAttrition"
+
 components:
   schemas:
     HealthStatus:
@@ -33,4 +174,205 @@ components:
           type: string
       required:
         - status
-
+    HrSummary:
+      type: object
+      required:
+        - totalEmployees
+        - attritionRate
+        - avgSatisfaction
+        - avgEvaluation
+        - avgMonthlyHours
+        - avgTenure
+        - workAccidentRate
+        - promotionRate
+        - stayedCount
+        - leftCount
+      properties:
+        totalEmployees:
+          type: integer
+        attritionRate:
+          type: number
+        avgSatisfaction:
+          type: number
+        avgEvaluation:
+          type: number
+        avgMonthlyHours:
+          type: number
+        avgTenure:
+          type: number
+        workAccidentRate:
+          type: number
+        promotionRate:
+          type: number
+        stayedCount:
+          type: integer
+        leftCount:
+          type: integer
+    DepartmentAttrition:
+      type: object
+      required:
+        - department
+        - total
+        - left
+        - stayed
+        - attritionRate
+      properties:
+        department:
+          type: string
+        total:
+          type: integer
+        left:
+          type: integer
+        stayed:
+          type: integer
+        attritionRate:
+          type: number
+    SalaryAttrition:
+      type: object
+      required:
+        - salary
+        - total
+        - left
+        - stayed
+        - attritionRate
+      properties:
+        salary:
+          type: string
+        total:
+          type: integer
+        left:
+          type: integer
+        stayed:
+          type: integer
+        attritionRate:
+          type: number
+    SatisfactionBucket:
+      type: object
+      required:
+        - bucket
+        - left
+        - stayed
+      properties:
+        bucket:
+          type: string
+        left:
+          type: integer
+        stayed:
+          type: integer
+    HoursProjects:
+      type: object
+      required:
+        - projects
+        - avgHoursLeft
+        - avgHoursStayed
+        - leftCount
+        - stayedCount
+      properties:
+        projects:
+          type: integer
+        avgHoursLeft:
+          type: number
+        avgHoursStayed:
+          type: number
+        leftCount:
+          type: integer
+        stayedCount:
+          type: integer
+    TenureAttrition:
+      type: object
+      required:
+        - tenure
+        - total
+        - left
+        - attritionRate
+        - avgSatisfaction
+      properties:
+        tenure:
+          type: integer
+        total:
+          type: integer
+        left:
+          type: integer
+        attritionRate:
+          type: number
+        avgSatisfaction:
+          type: number
+    RiskFactor:
+      type: object
+      required:
+        - factor
+        - importance
+        - direction
+        - description
+      properties:
+        factor:
+          type: string
+        importance:
+          type: number
+        direction:
+          type: string
+        description:
+          type: string
+    ScatterPoint:
+      type: object
+      required:
+        - satisfaction
+        - evaluation
+        - left
+        - hours
+      properties:
+        satisfaction:
+          type: number
+        evaluation:
+          type: number
+        left:
+          type: integer
+        hours:
+          type: integer
+    DepartmentDeep:
+      type: object
+      required:
+        - department
+        - total
+        - attritionRate
+        - avgSatisfaction
+        - avgEvaluation
+        - avgHours
+        - avgProjects
+      properties:
+        department:
+          type: string
+        total:
+          type: integer
+        attritionRate:
+          type: number
+        avgSatisfaction:
+          type: number
+        avgEvaluation:
+          type: number
+        avgHours:
+          type: number
+        avgProjects:
+          type: number
+    ProjectsAttrition:
+      type: object
+      required:
+        - projects
+        - total
+        - left
+        - attritionRate
+        - avgSatisfaction
+        - avgHours
+      properties:
+        projects:
+          type: integer
+        total:
+          type: integer
+        left:
+          type: integer
+        attritionRate:
+          type: number
+        avgSatisfaction:
+          type: number
+        avgHours:
+          type: number
