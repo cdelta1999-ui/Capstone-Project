@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { motion } from "framer-motion";
 import KpiCard from "@/components/KpiCard";
 import DeptBars from "@/components/3d/DeptBars";
-import RiskBubbles from "@/components/3d/RiskBubbles";
+import RiskDonut3D from "@/components/3d/RiskDonut3D";
 import ClusterScatter3D from "@/components/3d/ClusterScatter3D";
 import {
   FeatureImportanceBar,
@@ -187,16 +187,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* ── Why Employees Leave: profiles + root-cause charts ── */}
+      {/* ── Why Employees Leave: root-cause charts ── */}
       <SectionLabel>Why Employees Leave</SectionLabel>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {churnProfiles ? (
-          churnProfiles.map((p, i) => <ProfileCard key={p.name} profile={p} delay={0.1 + i * 0.06} />)
-        ) : (
-          [...Array(3)].map((_, i) => <div key={i} className="h-44 bg-white rounded-2xl border border-slate-100 animate-pulse" />)
-        )}
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card title="Churn by Project Load" subtitle="Sweet spot at 3–5 · overload spikes churn" className="h-[250px]" delay={0.05}>
           {projAttr ? <UCurveChart data={projAttr} /> : <Skeleton />}
@@ -232,9 +224,19 @@ export default function Dashboard() {
         <Card title="Top Predictors of Churn" subtitle="Feature importance (Random Forest)" className="lg:col-span-7 h-[300px]" delay={0.05}>
           {riskFactors ? <FeatureImportanceBar data={riskFactors} /> : <Skeleton />}
         </Card>
-        <Card title="Risk Factor Orbit" subtitle="Top drivers, sized by importance — drag to explore" className="lg:col-span-5 h-[300px]" delay={0.1}>
-          {riskFactors ? <RiskBubbles data={riskFactors} /> : <Skeleton />}
+        <Card title="Risk Factor Composition" subtitle="Share of predictive weight — drag to rotate" className="lg:col-span-5 h-[300px]" delay={0.1}>
+          {riskFactors ? <RiskDonut3D data={riskFactors} /> : <Skeleton />}
         </Card>
+      </div>
+
+      {/* ── Leaver Profiles & Action Plans (bottom) ─────────── */}
+      <SectionLabel>Leaver Profiles &amp; Action Plans</SectionLabel>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {churnProfiles ? (
+          churnProfiles.map((p, i) => <ProfileCard key={p.name} profile={p} delay={0.05 + i * 0.06} />)
+        ) : (
+          [...Array(3)].map((_, i) => <div key={i} className="h-44 bg-white rounded-2xl border border-slate-100 animate-pulse" />)
+        )}
       </div>
 
     </div>

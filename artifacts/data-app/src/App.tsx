@@ -24,6 +24,7 @@ function Router() {
         <span className="aurora-blob blob-b" />
         <span className="aurora-blob blob-c" />
         <span className="aurora-blob blob-d" />
+        <span className="aurora-blob blob-e" />
       </div>
       <Nav />
       <main className="relative z-10 flex-1">
