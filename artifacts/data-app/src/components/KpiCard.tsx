@@ -49,7 +49,7 @@ export default function KpiCard({
       <div className="relative z-10">
         <p className={`font-medium text-slate-600 ${compact ? "text-[10px] uppercase tracking-wide mb-0.5" : "text-sm mb-1.5"}`}>{title}</p>
         <div className={`font-bold text-slate-900 tracking-tight ${compact ? "text-lg" : "text-3xl"}`}>
-          {prefix}{displayValue.toFixed(decimals)}{suffix}
+          {prefix}{displayValue.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
         </div>
       </div>
     </motion.div>

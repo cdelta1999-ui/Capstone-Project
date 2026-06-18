@@ -1,1 +1,2 @@
 - [WebGL/3D charts](webgl-charts.md) — every r3f chart needs a WebGLBoundary + 2D fallback; animate via refs not per-frame setState; screenshots always show the fallback.
+- [recharts Area renders blank](recharts-area-blank.md) — recharts 2.15 Area animation clipPath can blank the whole series group (Area + sibling Line); fix with isAnimationActive={false}.
