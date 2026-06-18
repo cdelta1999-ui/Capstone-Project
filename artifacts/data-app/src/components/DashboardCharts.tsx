@@ -95,6 +95,20 @@ export function SankeyFlow({ total, stayed, left, profiles }: {
     );
   }
 
+  // Animated center-line that suggests the direction of flow.
+  function flowLine(x1: number, y1: number, h1: number, x2: number, y2: number, h2: number, color: string) {
+    const mx = (x1 + x2) / 2;
+    const cy1 = y1 + h1 / 2;
+    const cy2 = y2 + h2 / 2;
+    return (
+      <path
+        d={`M${x1},${cy1} C${mx},${cy1} ${mx},${cy2} ${x2},${cy2}`}
+        fill="none" stroke={color} strokeWidth={1.5} strokeOpacity={0.5} strokeLinecap="round"
+        className="sankey-flow"
+      />
+    );
+  }
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
       {/* Ribbons (drawn under nodes) */}
@@ -102,6 +116,13 @@ export function SankeyFlow({ total, stayed, left, profiles }: {
       {ribbon(col1x + nodeW, padTop + stayedH, leftH, col2x, leftY, leftH, C.rose, 0.2)}
       {profileNodes.map((p) => (
         <g key={`r-${p.name}`}>{ribbon(col2x + nodeW, p.srcY, p.srcH, col3x, p.y, p.nodeH, p.color, 0.26)}</g>
+      ))}
+
+      {/* Animated flow spines */}
+      {flowLine(col1x + nodeW, padTop, stayedH, col2x, stayedY, stayedH, C.teal)}
+      {flowLine(col1x + nodeW, padTop + stayedH, leftH, col2x, leftY, leftH, C.rose)}
+      {profileNodes.map((p) => (
+        <g key={`f-${p.name}`}>{flowLine(col2x + nodeW, p.srcY, p.srcH, col3x, p.y, p.nodeH, p.color)}</g>
       ))}
 
       {/* All Employees */}

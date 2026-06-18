@@ -2,10 +2,11 @@ import { Suspense } from "react";
 import { motion } from "framer-motion";
 import KpiCard from "@/components/KpiCard";
 import DeptBars from "@/components/3d/DeptBars";
+import RiskBubbles from "@/components/3d/RiskBubbles";
+import ClusterScatter3D from "@/components/3d/ClusterScatter3D";
 import {
   FeatureImportanceBar,
   UCurveChart,
-  ClusterScatter,
   FatigueCurveChart,
   SatisfactionDistBar,
   DeptBrainDrainChart,
@@ -39,7 +40,8 @@ function Card({ title, subtitle, children, className = "", delay = 0 }: {
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
-      className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex flex-col ${className}`}
+      whileHover={{ y: -4 }}
+      className={`bg-white/80 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm hover:shadow-xl transition-shadow duration-300 p-3 flex flex-col ${className}`}
     >
       {title && (
         <div className="mb-1.5 px-1">
@@ -74,7 +76,8 @@ function ProfileCard({ profile, delay }: { profile: any; delay: number }) {
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
-      className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3"
+      whileHover={{ y: -4 }}
+      className="bg-white/80 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm hover:shadow-xl transition-shadow duration-300 p-3"
       style={{ borderTop: `3px solid ${color}` }}
     >
       <div className="flex items-center justify-between mb-2">
@@ -198,8 +201,8 @@ export default function Dashboard() {
         <Card title="Churn by Project Load" subtitle="Sweet spot at 3–5 · overload spikes churn" className="h-[250px]" delay={0.05}>
           {projAttr ? <UCurveChart data={projAttr} /> : <Skeleton />}
         </Card>
-        <Card title="Leaver Clusters" subtitle="Satisfaction vs evaluation — three distinct groups" className="h-[250px]" delay={0.1}>
-          {scatter ? <ClusterScatter data={scatter} /> : <Skeleton />}
+        <Card title="Leaver Clusters" subtitle="Satisfaction × Evaluation × Hours — drag to rotate" className="h-[250px]" delay={0.1}>
+          {scatter ? <ClusterScatter3D data={scatter} /> : <Skeleton />}
         </Card>
         <Card title="Fatigue Curve" subtitle="Leavers' workload spikes at the 4–5 year mark" className="h-[250px]" delay={0.15}>
           {fatigueCurve ? <FatigueCurveChart data={fatigueCurve} /> : <Skeleton />}
@@ -225,9 +228,14 @@ export default function Dashboard() {
 
       {/* ── ML Feature Importance ───────────────────────────── */}
       <SectionLabel>Predictive Model</SectionLabel>
-      <Card title="Top Predictors of Churn" subtitle="Feature importance (Random Forest)" className="h-[200px]" delay={0.05}>
-        {riskFactors ? <FeatureImportanceBar data={riskFactors} /> : <Skeleton />}
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        <Card title="Top Predictors of Churn" subtitle="Feature importance (Random Forest)" className="lg:col-span-7 h-[300px]" delay={0.05}>
+          {riskFactors ? <FeatureImportanceBar data={riskFactors} /> : <Skeleton />}
+        </Card>
+        <Card title="Risk Factor Orbit" subtitle="Top drivers, sized by importance — drag to explore" className="lg:col-span-5 h-[300px]" delay={0.1}>
+          {riskFactors ? <RiskBubbles data={riskFactors} /> : <Skeleton />}
+        </Card>
+      </div>
 
     </div>
   );

@@ -324,7 +324,54 @@
   }
 }
 
+/* ── Aurora mesh background ──────────────────────────────────────────────── */
+.app-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 700px at 100% -5%, #eef2ff 0%, rgba(238, 242, 255, 0) 55%),
+    radial-gradient(900px 600px at -5% 110%, #ecfeff 0%, rgba(236, 254, 255, 0) 55%),
+    linear-gradient(180deg, #f7f8fc 0%, #eef1f9 100%);
+}
+.app-aurora::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(circle at 50% 30%, #000 0%, transparent 80%);
+}
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.5;
+  will-change: transform;
+}
+.blob-a { width: 460px; height: 460px; background: #c7d2fe; top: -120px; left: -80px; animation: drift-a 22s ease-in-out infinite; }
+.blob-b { width: 420px; height: 420px; background: #bae6fd; top: 8%; right: -120px; animation: drift-b 26s ease-in-out infinite; }
+.blob-c { width: 380px; height: 380px; background: #99f6e4; bottom: -140px; left: 18%; animation: drift-c 24s ease-in-out infinite; }
+.blob-d { width: 340px; height: 340px; background: #ddd6fe; bottom: 6%; right: 14%; animation: drift-d 28s ease-in-out infinite; }
+
+@keyframes drift-a { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(80px, 60px) scale(1.12); } }
+@keyframes drift-b { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-70px, 50px) scale(1.08); } }
+@keyframes drift-c { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(60px, -50px) scale(1.1); } }
+@keyframes drift-d { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-50px, -60px) scale(1.14); } }
+
+/* ── Flowing Sankey ribbons ──────────────────────────────────────────────── */
+@keyframes sankeyFlow { to { stroke-dashoffset: -28; } }
+.sankey-flow { stroke-dasharray: 5 9; animation: sankeyFlow 1.2s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob { animation: none; }
+  .sankey-flow { animation: none; }
+}
+
 @media print {
+  .app-aurora { display: none !important; }
   @page { margin: 0; }
   body { margin: 0.5in; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .gap-4, .gap-6 { row-gap: 0 !important; }
