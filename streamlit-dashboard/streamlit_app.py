@@ -17,6 +17,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 from plotly.subplots import make_subplots
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -306,6 +307,46 @@ def attrition_flow_svg(
         f'preserveAspectRatio="xMidYMid meet" '
         f'style="width:100%;height:330px;display:block;overflow:visible">{inner}</svg></div>'
     )
+
+
+def render_rotating_3d(fig: go.Figure, height: int = 560, div_id: str = "cluster3d") -> None:
+    """Render a Plotly 3D figure that continuously auto-rotates its camera, then
+    pauses while the user drags/zooms to explore and resumes after a short idle.
+    Honours prefers-reduced-motion. Embedded via components.html so the rotation
+    loop can drive the camera with Plotly.relayout (st.plotly_chart can't)."""
+    html = fig.to_html(
+        include_plotlyjs="cdn",
+        full_html=False,
+        div_id=div_id,
+        config={"displayModeBar": False, "responsive": True},
+    )
+    script = """
+<style>html,body{margin:0;background:transparent;overflow:hidden}</style>
+<script>
+(function(){
+  var R=1.8, ELEV=0.85, STEP=0.004, ang=Math.PI*0.25, paused=false, resumeAt=0;
+  var HOLD=999999999;
+  function start(){
+    var gd=document.getElementById('__DIV__');
+    if(typeof Plotly==='undefined' || !gd || !gd._fullLayout){ return setTimeout(start,200); }
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){ return; }
+    gd.addEventListener('mousedown', function(){ paused=true; resumeAt=Date.now()+HOLD; });
+    gd.addEventListener('touchstart', function(){ paused=true; resumeAt=Date.now()+HOLD; }, {passive:true});
+    gd.addEventListener('wheel', function(){ paused=true; resumeAt=Date.now()+4000; }, {passive:true});
+    window.addEventListener('mouseup', function(){ resumeAt=Date.now()+3000; });
+    window.addEventListener('touchend', function(){ resumeAt=Date.now()+3000; });
+    setInterval(function(){
+      if(paused && Date.now()>resumeAt){ paused=false; }
+      if(paused){ return; }
+      ang+=STEP;
+      Plotly.relayout(gd, {'scene.camera.eye': {x:R*Math.cos(ang), y:R*Math.sin(ang), z:ELEV}});
+    }, 50);
+  }
+  start();
+})();
+</script>
+""".replace("__DIV__", div_id)
+    components.html(html + script, height=height, scrolling=False)
 
 
 def inject_css() -> None:
