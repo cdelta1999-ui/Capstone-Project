@@ -1,4 +1,5 @@
 - [WebGL/3D charts](webgl-charts.md) — every r3f chart needs a WebGLBoundary + 2D fallback; animate via refs not per-frame setState; screenshots always show the fallback.
+- [Streamlit Cloud deploy](streamlit-cloud-deploy.md) — never pin server.port in the repo-root config (Cloud health-checks 8501); Cloud uses root uv.lock over requirements.txt; read the real deploy log before lowering pins.
 - [Commit & push to GitHub](git-push-github.md) — bash blocks `git commit` but execSync works once you set a repo-local git identity; token via listConnections('github').
 - [Streamlit in this monorepo](streamlit-monorepo.md) — keep Python apps outside artifacts/; run via webview workflow on its own port; verify with AppTest; not on the :80 proxy.
 - [recharts capture-safe charts](recharts-area-blank.md) — recharts grow/Area entrance animations blank on screenshot/print; use the CSS wipe (isAnimationActive=false + .chart-wipe), don't revert to grow.
