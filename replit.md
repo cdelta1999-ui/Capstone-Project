@@ -11,6 +11,7 @@ Analyzes ~12,000 employee records to predict turnover and recommend retention ac
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 - `cd streamlit-dashboard && streamlit run streamlit_app.py --server.port 5000` — run the Python + Streamlit dashboard (port 5000)
+- Streamlit Community Cloud deploy: set main file to `streamlit_app.py` (repo-root shim that runs the dashboard) and Python 3.12 in advanced settings. Root `requirements.txt` is what Cloud installs from.
 
 ## Stack
 
