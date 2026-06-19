@@ -178,7 +178,7 @@ def section_overview(df: pd.DataFrame) -> None:
             )
         )
         donut.update_layout(showlegend=False, height=340, margin=dict(t=10, b=10))
-        st.plotly_chart(donut, width="stretch")
+        st.plotly_chart(donut, use_container_width=True)
 
     with col_right:
         st.markdown("**Why this matters**")
@@ -228,7 +228,7 @@ def section_eda(df: pd.DataFrame) -> None:
             labels={"attrition_rate": "Attrition Rate (%)", "Department": ""},
         )
         fig.update_layout(height=380, coloraxis_showscale=False, margin=dict(t=10))
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
     with c2:
         st.markdown("**Attrition Rate by Salary Band**")
         fig = px.bar(
@@ -240,7 +240,7 @@ def section_eda(df: pd.DataFrame) -> None:
             labels={"attrition_rate": "Attrition Rate (%)", "salary": "Salary Band"},
         )
         fig.update_layout(height=380, coloraxis_showscale=False, margin=dict(t=10))
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
     st.divider()
 
@@ -262,7 +262,7 @@ def section_eda(df: pd.DataFrame) -> None:
             labels={"satisfaction_level": "Satisfaction Level"},
         )
         fig.update_layout(height=380, margin=dict(t=10))
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
     with c4:
         st.markdown("**Satisfaction vs Evaluation (the 3 churn clusters)**")
         plot_df = df.assign(Status=np.where(df["left"] == 1, "Left", "Stayed"))
@@ -279,7 +279,7 @@ def section_eda(df: pd.DataFrame) -> None:
             },
         )
         fig.update_layout(height=380, margin=dict(t=10))
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
     st.divider()
 
@@ -317,7 +317,7 @@ def section_eda(df: pd.DataFrame) -> None:
             },
         )
         fig.update_layout(height=360, coloraxis_showscale=False, margin=dict(t=10))
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
     with c6:
         st.markdown("**Attrition Rate by Tenure**")
         fig = px.line(
@@ -332,7 +332,7 @@ def section_eda(df: pd.DataFrame) -> None:
         )
         fig.update_traces(line_color=ACCENT)
         fig.update_layout(height=360, margin=dict(t=10))
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
     st.divider()
     st.markdown("**Correlation Heatmap (numeric features)**")
@@ -356,7 +356,7 @@ def section_eda(df: pd.DataFrame) -> None:
         aspect="auto",
     )
     fig.update_layout(height=520, margin=dict(t=10))
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
 
 
 def section_model(df: pd.DataFrame) -> None:
@@ -391,7 +391,7 @@ def section_model(df: pd.DataFrame) -> None:
                 "ROC-AUC": "{:.3f}",
             }
         ),
-        width="stretch",
+        use_container_width=True,
         hide_index=True,
     )
 
@@ -417,7 +417,7 @@ def section_model(df: pd.DataFrame) -> None:
             y=["Stayed", "Left"],
         )
         cm_fig.update_layout(height=380, margin=dict(t=10), coloraxis_showscale=False)
-        st.plotly_chart(cm_fig, width="stretch")
+        st.plotly_chart(cm_fig, use_container_width=True)
         st.caption(
             f"Recall {rf['recall']:.1%} — of all employees who actually left, "
             f"the model catches {rf['recall']:.0%} of them."
@@ -435,7 +435,7 @@ def section_model(df: pd.DataFrame) -> None:
             labels={"importance": "Importance", "feature": ""},
         )
         fig.update_layout(height=380, coloraxis_showscale=False, margin=dict(t=10))
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def section_profiles(df: pd.DataFrame) -> None:
@@ -512,7 +512,7 @@ def section_profiles(df: pd.DataFrame) -> None:
         ],
         columns=["Risk Factor", "Impact"],
     )
-    st.dataframe(risk, width="stretch", hide_index=True)
+    st.dataframe(risk, use_container_width=True, hide_index=True)
 
     st.markdown("**Recommendations for HR Leadership**")
     st.write(

@@ -1,9 +1,9 @@
 # Dependencies for the Salifort Motors Streamlit dashboard.
-# Kept as lower-bound pins so Streamlit Community Cloud can resolve wheels that
-# match its Python runtime. Use Python 3.12 in the app's advanced settings.
-# streamlit>=1.58 guarantees the width="stretch" chart/dataframe API the app uses.
-streamlit>=1.58
-pandas>=2.2
-numpy>=1.26
-scikit-learn>=1.5
-plotly>=5.24
+# Lower-bound pins chosen to be widely available on PyPI and mutually
+# compatible, so Streamlit Community Cloud can always resolve wheels for its
+# Python runtime. Works on Python 3.9-3.12.
+streamlit>=1.28
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.3
+plotly>=5.15
