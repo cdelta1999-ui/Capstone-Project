@@ -369,7 +369,32 @@ def inject_css() -> None:
         .depth-lift-soft { filter: drop-shadow(0 4px 5px rgba(30,41,59,0.14)); }
         .flow-wrap { width:100%; padding:6px 4px 2px; }
         .flow-wrap svg text { font-family:'Inter', system-ui, sans-serif; }
-        @media (prefers-reduced-motion: reduce){ .sankey-flow { animation:none; } }
+        /* ---- Ambient motion ---- */
+        @keyframes floatA { 0%,100%{ transform: translate(0,0) scale(1); } 50%{ transform: translate(70px,46px) scale(1.14); } }
+        @keyframes floatB { 0%,100%{ transform: translate(0,0) scale(1); } 50%{ transform: translate(-56px,34px) scale(1.1); } }
+        @keyframes cardIn { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform:none; } }
+        @keyframes logoFloat { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-4px); } }
+
+        .stApp::before, .stApp::after {
+            content:""; position:fixed; border-radius:50%;
+            filter: blur(72px); pointer-events:none; z-index:0;
+        }
+        .stApp::before {
+            width:460px; height:460px; left:-90px; top:-70px;
+            background: radial-gradient(circle, rgba(99,102,241,0.28), transparent 68%);
+            animation: floatA 28s ease-in-out infinite;
+        }
+        .stApp::after {
+            width:540px; height:540px; right:-120px; top:10%;
+            background: radial-gradient(circle, rgba(14,165,233,0.22), transparent 68%);
+            animation: floatB 34s ease-in-out infinite;
+        }
+        .block-container { position:relative; z-index:1; }
+
+        @media (prefers-reduced-motion: reduce){
+            .sankey-flow, .stApp::before, .stApp::after, .app-logo,
+            .kpi-card, .profile-card, [data-testid="stVerticalBlockBorderWrapper"] { animation:none !important; }
+        }
 
         html, body, [class*="css"], .stApp,
         [data-testid="stAppViewContainer"], [data-testid="stMarkdownContainer"] {
@@ -400,6 +425,7 @@ def inject_css() -> None:
             display:flex; align-items:center; justify-content:center;
             color:#fff; font-weight:800; font-size:22px;
             box-shadow: 0 10px 24px -6px rgba(99,102,241,0.55);
+            animation: logoFloat 4.5s ease-in-out infinite;
         }
         .app-title { font-size:1.7rem; font-weight:800; color:var(--ink); letter-spacing:-0.02em; line-height:1.05; margin:0; }
         .app-sub { color:var(--slate); font-size:.95rem; margin-top:3px; }
@@ -420,7 +446,9 @@ def inject_css() -> None:
             border:1px solid rgba(255,255,255,0.80);
             border-radius:16px; padding:15px 16px 14px 19px;
             box-shadow: 0 14px 32px -18px rgba(15,23,42,0.30);
+            transition: transform .25s ease, box-shadow .25s ease;
         }
+        .kpi-card:hover { transform: translateY(-4px) !important; box-shadow: 0 24px 44px -18px rgba(15,23,42,0.42); }
         .kpi-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background: var(--accent,#6366f1); }
         .kpi-label { font-size:.70rem; text-transform:uppercase; letter-spacing:.10em; color:var(--muted); font-weight:700; }
         .kpi-value { font-size:1.65rem; font-weight:800; color:var(--ink); letter-spacing:-0.02em; line-height:1.25; margin-top:3px; }
@@ -433,6 +461,12 @@ def inject_css() -> None:
             border:1px solid rgba(255,255,255,0.75) !important;
             border-radius:18px !important;
             box-shadow: 0 16px 38px -22px rgba(15,23,42,0.32);
+            transition: transform .28s ease, box-shadow .28s ease;
+            animation: cardIn .5s ease both;
+        }
+        [data-testid="stVerticalBlockBorderWrapper"]:hover {
+            transform: translateY(-3px) !important;
+            box-shadow: 0 28px 54px -24px rgba(15,23,42,0.42);
         }
         .chart-h { font-weight:700; color:var(--ink); font-size:.98rem; }
         .chart-sub { color:var(--slate); font-size:.80rem; margin-bottom:2px; }
@@ -456,7 +490,9 @@ def inject_css() -> None:
             border-top:4px solid var(--accent,#6366f1);
             border-radius:16px; padding:16px 18px; height:100%;
             box-shadow: 0 14px 32px -20px rgba(15,23,42,0.30);
+            transition: transform .25s ease, box-shadow .25s ease;
         }
+        .profile-card:hover { transform: translateY(-4px) !important; box-shadow: 0 24px 46px -20px rgba(15,23,42,0.42); }
         .profile-name { font-weight:700; font-size:1.06rem; color:var(--ink); }
         .profile-share { font-size:2.1rem; font-weight:800; color:var(--accent,#6366f1); line-height:1; margin-top:4px; }
         .profile-count { font-size:.76rem; color:var(--muted); margin-bottom:8px; }
@@ -707,7 +743,7 @@ def section_eda(df: pd.DataFrame) -> None:
     with st.container(border=True):
         chart_head(
             "Leaver Clusters in 3D",
-            "Satisfaction × Evaluation × Monthly Hours, coloured by leaver profile — drag to rotate",
+            "Satisfaction × Evaluation × Monthly Hours, coloured by leaver profile — auto-rotating, drag to explore",
         )
         _, burned, unhappy, apathetic = leaver_profiles(df)
         seg = pd.Series("Stayed", index=df.index)
@@ -735,16 +771,17 @@ def section_eda(df: pd.DataFrame) -> None:
                 "average_monthly_hours": "Monthly Hours",
             },
         )
-        fig.update_traces(marker=dict(size=2.8))
+        fig.update_traces(marker=dict(size=3.2, line=dict(width=0)))
         apply_theme(fig, 540)
         fig.update_layout(
             scene=dict(
                 xaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(148,163,184,0.25)"),
                 yaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(148,163,184,0.25)"),
                 zaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(148,163,184,0.25)"),
+                camera=dict(eye=dict(x=1.27, y=1.27, z=0.85)),
             )
         )
-        st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
+        render_rotating_3d(fig, height=560)
 
     c5, c6 = st.columns(2, gap="medium")
     with c5:
