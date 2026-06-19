@@ -1,6 +1,6 @@
-# [Project name]
+# Salifort Motors HR Analytics
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Analyzes ~12,000 employee records to predict turnover and recommend retention actions. Available as a JS/React data app and as a Python + Streamlit capstone dashboard.
 
 ## Run & Operate
 
@@ -10,6 +10,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+- `cd streamlit-dashboard && streamlit run app.py --server.port 5000` — run the Python + Streamlit dashboard (port 5000)
 
 ## Stack
 
@@ -22,7 +23,10 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/data-app/` — JS/React interactive HR dashboard (Vite).
+- `artifacts/api-server/` — Express API; HR metric/profile logic in `src/routes/hr.ts` (source of truth for thresholds).
+- `artifacts/api-server/data/hr_data.csv` — original dataset (14,999 rows).
+- `streamlit-dashboard/` — standalone Python + Streamlit capstone rebuild (`app.py`, pinned `requirements.txt`, `data/hr_data.csv`, `.streamlit/config.toml`). Runs outside the pnpm workspace.
 
 ## Architecture decisions
 
@@ -30,7 +34,14 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Employee turnover & retention analytics for Salifort Motors (Google Advanced Data Analytics capstone):
+
+- Overview/KPIs: attrition rate, satisfaction, hours, tenure, promotion rate.
+- Exploratory analysis: attrition by department, salary, projects, tenure; satisfaction/evaluation clusters; correlation heatmap.
+- Predictive model: Logistic Regression / Decision Tree / Random Forest comparison, confusion matrix, feature importance (Random Forest is the champion).
+- Churn profiles & recommendations: Burned Out Stars, Unhappy Underperformers, Apathetic Middle, plus risk factors and HR actions.
+
+The Streamlit and JS dashboards share the same metric definitions; the Streamlit app de-duplicates the dataset to ~12,000 unique records (capstone convention), so exact numeric parity with the raw-row JS app is not expected.
 
 ## User preferences
 
