@@ -3,6 +3,11 @@ Salifort Motors: Employee Turnover & Retention Dashboard
 Python + Streamlit rebuild of the capstone project.
 
 Identifying who leaves, why, and where to act — based on ~12,000 employee records.
+
+The presentation layer mirrors the React "People Analytics" command center:
+an aurora gradient backdrop, glassmorphism cards, themed Plotly visuals, and
+signature charts (Sankey attrition flow, 3D leaver clusters, dumbbell brain
+drain). The data and model logic are unchanged so every metric stays in parity.
 """
 
 from pathlib import Path
@@ -12,6 +17,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from plotly.subplots import make_subplots
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -28,9 +34,28 @@ from sklearn.tree import DecisionTreeClassifier
 
 DATA_PATH = Path(__file__).parent / "data" / "hr_data.csv"
 
-LEFT_COLOR = "#f43f5e"
-STAYED_COLOR = "#10b981"
-ACCENT = "#6366f1"
+# --------------------------------------------------------------------------- #
+# Brand palette (mirrors the React data-app)
+# --------------------------------------------------------------------------- #
+INK = "#0f172a"
+SLATE = "#475569"
+MUTED = "#94a3b8"
+INDIGO = "#6366f1"
+VIOLET = "#8b5cf6"
+SKY = "#0ea5e9"
+TEAL = "#14b8a6"
+AMBER = "#f59e0b"
+ROSE = "#f43f5e"
+
+LEFT_COLOR = ROSE
+STAYED_COLOR = TEAL
+
+PLOT_FONT = "Inter, system-ui, -apple-system, sans-serif"
+CHART_CONFIG = {"displayModeBar": False}
+
+# Custom continuous colour scales
+ATTR_SCALE = [[0.0, "#fee2e2"], [0.5, "#fb7185"], [1.0, "#e11d48"]]
+IMP_SCALE = [[0.0, "#e0e7ff"], [0.5, "#818cf8"], [1.0, "#4338ca"]]
 
 
 # --------------------------------------------------------------------------- #
@@ -140,69 +165,329 @@ def train_models(df: pd.DataFrame) -> dict:
     }
 
 
+def leaver_profiles(df: pd.DataFrame):
+    """Split leavers into the three churn segments used across the dashboard."""
+    leavers = df[df["left"] == 1]
+    burned = leavers[
+        (leavers["last_evaluation"] >= 0.75)
+        & (leavers["average_monthly_hours"] >= 230)
+    ]
+    unhappy = leavers[
+        (leavers["last_evaluation"] < 0.60) & (leavers["satisfaction_level"] < 0.20)
+    ]
+    apathetic = leavers.drop(burned.index).drop(unhappy.index, errors="ignore")
+    return leavers, burned, unhappy, apathetic
+
+
 # --------------------------------------------------------------------------- #
-# Page sections
+# Styling helpers
+# --------------------------------------------------------------------------- #
+def apply_theme(fig: go.Figure, height: int | None = None, legend: bool = True):
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family=PLOT_FONT, color=SLATE, size=13),
+        margin=dict(t=12, r=12, b=8, l=8),
+        hoverlabel=dict(font_family=PLOT_FONT, bgcolor="white"),
+        colorway=[INDIGO, TEAL, ROSE, AMBER, VIOLET, SKY],
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            x=0,
+            bgcolor="rgba(0,0,0,0)",
+            font=dict(color=SLATE),
+        ),
+    )
+    if height:
+        fig.update_layout(height=height)
+    if not legend:
+        fig.update_layout(showlegend=False)
+    grid = "rgba(148,163,184,0.18)"
+    line = "rgba(148,163,184,0.35)"
+    fig.update_xaxes(showgrid=True, gridcolor=grid, zeroline=False, linecolor=line)
+    fig.update_yaxes(showgrid=True, gridcolor=grid, zeroline=False, linecolor=line)
+    return fig
+
+
+def inject_css() -> None:
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        :root { --ink:#0f172a; --slate:#475569; --muted:#94a3b8; --indigo:#6366f1; }
+
+        html, body, [class*="css"], .stApp,
+        [data-testid="stAppViewContainer"], [data-testid="stMarkdownContainer"] {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        .stApp {
+            background:
+              radial-gradient(900px 620px at 6% -8%, rgba(99,102,241,0.20), transparent 60%),
+              radial-gradient(820px 520px at 98% -4%, rgba(14,165,233,0.16), transparent 55%),
+              radial-gradient(900px 720px at 92% 105%, rgba(20,184,166,0.15), transparent 55%),
+              radial-gradient(720px 620px at -4% 104%, rgba(139,92,246,0.15), transparent 55%),
+              linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+            background-attachment: fixed;
+        }
+
+        #MainMenu, footer, [data-testid="stToolbar"], [data-testid="stDecoration"] {
+            visibility: hidden; height: 0;
+        }
+        header[data-testid="stHeader"] { background: transparent; }
+        .block-container { padding-top: 2.0rem; padding-bottom: 3rem; max-width: 1520px; }
+
+        /* ---- App header ---- */
+        .app-header { display:flex; align-items:center; gap:15px; margin: 2px 0 4px; }
+        .app-logo {
+            width:50px; height:50px; border-radius:14px;
+            background: linear-gradient(135deg, #6366f1, #0ea5e9);
+            display:flex; align-items:center; justify-content:center;
+            color:#fff; font-weight:800; font-size:22px;
+            box-shadow: 0 10px 24px -6px rgba(99,102,241,0.55);
+        }
+        .app-title { font-size:1.7rem; font-weight:800; color:var(--ink); letter-spacing:-0.02em; line-height:1.05; margin:0; }
+        .app-sub { color:var(--slate); font-size:.95rem; margin-top:3px; }
+
+        /* ---- Section headers ---- */
+        .eyebrow { text-transform:uppercase; letter-spacing:.16em; font-size:.72rem; font-weight:700; color:var(--indigo); }
+        .sec-title { font-size:1.3rem; font-weight:700; color:var(--ink); letter-spacing:-0.01em; margin:1px 0; }
+        .sec-sub { color:var(--slate); font-size:.92rem; }
+
+        /* ---- KPI grid ---- */
+        .kpi-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin: 8px 0 6px; }
+        @media (max-width: 1150px){ .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        .kpi-card {
+            position:relative; overflow:hidden;
+            background: rgba(255,255,255,0.72);
+            -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+            border:1px solid rgba(255,255,255,0.80);
+            border-radius:16px; padding:15px 16px 14px 19px;
+            box-shadow: 0 14px 32px -18px rgba(15,23,42,0.30);
+        }
+        .kpi-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background: var(--accent,#6366f1); }
+        .kpi-label { font-size:.70rem; text-transform:uppercase; letter-spacing:.10em; color:var(--muted); font-weight:700; }
+        .kpi-value { font-size:1.65rem; font-weight:800; color:var(--ink); letter-spacing:-0.02em; line-height:1.25; margin-top:3px; }
+        .kpi-hint { font-size:.74rem; color:var(--slate); margin-top:1px; }
+
+        /* ---- Glass cards (native bordered containers) ---- */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+            background: rgba(255,255,255,0.70);
+            -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+            border:1px solid rgba(255,255,255,0.75) !important;
+            border-radius:18px !important;
+            box-shadow: 0 16px 38px -22px rgba(15,23,42,0.32);
+        }
+        .chart-h { font-weight:700; color:var(--ink); font-size:.98rem; }
+        .chart-sub { color:var(--slate); font-size:.80rem; margin-bottom:2px; }
+
+        /* ---- Callouts ---- */
+        .callout {
+            background: rgba(255,255,255,0.66);
+            -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+            border:1px solid rgba(255,255,255,0.75);
+            border-left:4px solid var(--accent,#6366f1);
+            border-radius:14px; padding:14px 16px; color:var(--slate); font-size:.92rem;
+        }
+        .callout b, .callout strong { color:var(--ink); }
+
+        /* ---- Profile cards ---- */
+        .profile-card {
+            background: rgba(255,255,255,0.74);
+            -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+            border:1px solid rgba(255,255,255,0.80);
+            border-top:4px solid var(--accent,#6366f1);
+            border-radius:16px; padding:16px 18px; height:100%;
+            box-shadow: 0 14px 32px -20px rgba(15,23,42,0.30);
+        }
+        .profile-name { font-weight:700; font-size:1.06rem; color:var(--ink); }
+        .profile-share { font-size:2.1rem; font-weight:800; color:var(--accent,#6366f1); line-height:1; margin-top:4px; }
+        .profile-count { font-size:.76rem; color:var(--muted); margin-bottom:8px; }
+        .profile-desc { font-size:.88rem; color:var(--slate); }
+        .profile-stats { font-size:.76rem; color:var(--muted); margin:8px 0; }
+        .profile-action { font-size:.86rem; color:var(--ink); }
+        .profile-action b { color: var(--accent,#6366f1); }
+
+        /* ---- Glass tables ---- */
+        table.gt { width:100%; border-collapse: collapse; font-size:.9rem; }
+        table.gt th {
+            text-align:left; padding:9px 12px; color:var(--muted);
+            font-size:.70rem; text-transform:uppercase; letter-spacing:.08em; font-weight:700;
+            border-bottom:1px solid rgba(148,163,184,0.30);
+        }
+        table.gt td { padding:10px 12px; color:var(--ink); border-bottom:1px solid rgba(148,163,184,0.16); }
+        table.gt tr.hl td {
+            background: linear-gradient(90deg, rgba(99,102,241,0.12), rgba(14,165,233,0.06));
+            font-weight:700;
+        }
+        table.gt tr.hl td:first-child { box-shadow: inset 3px 0 0 #6366f1; }
+
+        /* ---- Modern top tabs ---- */
+        .stTabs [data-baseweb="tab-list"] {
+            gap:6px; background: rgba(255,255,255,0.55);
+            -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+            padding:6px; border-radius:14px; border:1px solid rgba(255,255,255,0.65);
+        }
+        .stTabs [data-baseweb="tab"] {
+            border-radius:10px; padding:9px 18px; font-weight:600; color:var(--slate);
+        }
+        .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] { display:none; }
+        .stTabs [aria-selected="true"] {
+            background: linear-gradient(135deg, #6366f1, #0ea5e9) !important;
+            color:#fff !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def kpi_grid(items: list[dict]) -> None:
+    cards = ""
+    for it in items:
+        cards += (
+            f'<div class="kpi-card" style="--accent:{it["color"]}">'
+            f'<div class="kpi-label">{it["label"]}</div>'
+            f'<div class="kpi-value">{it["value"]}</div>'
+            f'<div class="kpi-hint">{it.get("hint", "")}</div>'
+            f"</div>"
+        )
+    st.markdown(f'<div class="kpi-grid">{cards}</div>', unsafe_allow_html=True)
+
+
+def sec(eyebrow: str, title: str, sub: str = "") -> None:
+    html = (
+        f'<div style="margin:16px 0 10px">'
+        f'<div class="eyebrow">{eyebrow}</div>'
+        f'<div class="sec-title">{title}</div>'
+    )
+    if sub:
+        html += f'<div class="sec-sub">{sub}</div>'
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def chart_head(title: str, sub: str = "") -> None:
+    html = f'<div class="chart-h">{title}</div>'
+    if sub:
+        html += f'<div class="chart-sub">{sub}</div>'
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def callout(html: str, accent: str = INDIGO) -> None:
+    st.markdown(
+        f'<div class="callout" style="--accent:{accent}">{html}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def glass_table(headers: list[str], rows: list[list], highlight: int | None = None) -> None:
+    thead = "".join(f"<th>{h}</th>" for h in headers)
+    body = ""
+    for i, r in enumerate(rows):
+        cls = ' class="hl"' if i == highlight else ""
+        tds = "".join(f"<td>{c}</td>" for c in r)
+        body += f"<tr{cls}>{tds}</tr>"
+    st.markdown(
+        f'<table class="gt"><thead><tr>{thead}</tr></thead><tbody>{body}</tbody></table>',
+        unsafe_allow_html=True,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Sections
 # --------------------------------------------------------------------------- #
 def section_overview(df: pd.DataFrame) -> None:
-    st.subheader("Workforce Overview")
-
     total = len(df)
     left = int(df["left"].sum())
     stayed = total - left
     attrition_rate = left / total * 100
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Employees Analyzed", f"{total:,}")
-    c2.metric("Attrition Rate", f"{attrition_rate:.1f}%")
-    c3.metric("Left the Company", f"{left:,}")
-    c4.metric("Still Employed", f"{stayed:,}")
+    sec("Workforce", "Attrition Overview", "The state of retention across the company today")
+    kpi_grid(
+        [
+            {"label": "Employees", "value": f"{total:,}", "hint": "unique records", "color": INDIGO},
+            {"label": "Attrition Rate", "value": f"{attrition_rate:.1f}%", "hint": f"{left:,} left", "color": ROSE},
+            {"label": "Avg Satisfaction", "value": f"{df['satisfaction_level'].mean():.2f}", "hint": "0–1 scale", "color": TEAL},
+            {"label": "Avg Evaluation", "value": f"{df['last_evaluation'].mean():.2f}", "hint": "0–1 scale", "color": SKY},
+            {"label": "Avg Monthly Hrs", "value": f"{df['average_monthly_hours'].mean():.0f}", "hint": "per employee", "color": AMBER},
+            {"label": "Avg Tenure", "value": f"{df['time_spend_company'].mean():.1f}", "hint": "years at company", "color": VIOLET},
+            {"label": "Promotion Rate", "value": f"{df['promotion_last_5years'].mean() * 100:.1f}%", "hint": "in last 5 yrs", "color": INDIGO},
+            {"label": "Work Accidents", "value": f"{df['Work_accident'].mean() * 100:.1f}%", "hint": "share involved", "color": SLATE},
+        ]
+    )
 
-    c5, c6, c7, c8 = st.columns(4)
-    c5.metric("Avg Satisfaction", f"{df['satisfaction_level'].mean():.2f}")
-    c6.metric("Avg Monthly Hours", f"{df['average_monthly_hours'].mean():.0f}")
-    c7.metric("Avg Tenure (yrs)", f"{df['time_spend_company'].mean():.1f}")
-    c8.metric("Promoted (5 yrs)", f"{df['promotion_last_5years'].mean() * 100:.1f}%")
-
-    st.divider()
-
-    col_left, col_right = st.columns([1, 1])
+    col_left, col_right = st.columns([1, 1.25], gap="medium")
     with col_left:
-        st.markdown("**Retention Split**")
-        donut = go.Figure(
-            go.Pie(
-                labels=["Stayed", "Left"],
-                values=[stayed, left],
-                hole=0.6,
-                marker=dict(colors=[STAYED_COLOR, LEFT_COLOR]),
-                textinfo="label+percent",
+        with st.container(border=True):
+            chart_head("Retention Split", "Who stayed vs. who left")
+            donut = go.Figure(
+                go.Pie(
+                    labels=["Stayed", "Left"],
+                    values=[stayed, left],
+                    hole=0.62,
+                    marker=dict(colors=[STAYED_COLOR, LEFT_COLOR], line=dict(color="white", width=2)),
+                    textinfo="label+percent",
+                    textfont=dict(family=PLOT_FONT, size=14),
+                )
             )
-        )
-        donut.update_layout(showlegend=False, height=340, margin=dict(t=10, b=10))
-        st.plotly_chart(donut, use_container_width=True)
+            donut.add_annotation(
+                text=f"<b>{attrition_rate:.0f}%</b><br>left",
+                showarrow=False,
+                font=dict(family=PLOT_FONT, size=22, color=INK),
+            )
+            apply_theme(donut, 330, legend=False)
+            st.plotly_chart(donut, use_container_width=True, config=CHART_CONFIG)
 
     with col_right:
-        st.markdown("**Why this matters**")
-        st.write(
-            f"Nearly **1 in 6 employees** ({attrition_rate:.0f}%) left Salifort Motors. "
-            "Replacing an employee can cost 50–200% of their annual salary in "
-            "recruiting, onboarding and lost productivity. This dashboard pinpoints "
-            "**who** is at risk, **why** they leave, and **where** HR should act first."
-        )
-        st.info(
-            "Built on the de-duplicated dataset: "
-            f"{raw_row_count():,} raw records → **{total:,} unique employees** "
-            "after removing 3,008 exact duplicates."
-        )
+        with st.container(border=True):
+            chart_head("Attrition Flow", "From the whole workforce to specific leaver profiles")
+            _, burned, unhappy, apathetic = leaver_profiles(df)
+            labels = [
+                "All Employees", "Stayed", "Left",
+                "Burned Out Stars", "Unhappy Underperformers", "Apathetic Middle",
+            ]
+            node_colors = [INDIGO, TEAL, ROSE, ROSE, AMBER, VIOLET]
+            link_colors = [
+                "rgba(20,184,166,0.35)", "rgba(244,63,94,0.30)",
+                "rgba(244,63,94,0.30)", "rgba(245,158,11,0.30)", "rgba(139,92,246,0.30)",
+            ]
+            sankey = go.Figure(
+                go.Sankey(
+                    arrangement="snap",
+                    node=dict(
+                        label=labels, color=node_colors, pad=18, thickness=16,
+                        line=dict(color="white", width=1),
+                    ),
+                    link=dict(
+                        source=[0, 0, 2, 2, 2],
+                        target=[1, 2, 3, 4, 5],
+                        value=[stayed, left, len(burned), len(unhappy), len(apathetic)],
+                        color=link_colors,
+                    ),
+                )
+            )
+            apply_theme(sankey, 330, legend=False)
+            sankey.update_layout(font=dict(family=PLOT_FONT, color=INK, size=12))
+            st.plotly_chart(sankey, use_container_width=True, config=CHART_CONFIG)
+
+    callout(
+        f"Nearly <b>1 in 6 employees</b> ({attrition_rate:.0f}%) left Salifort Motors. "
+        "Replacing an employee can cost <b>50–200% of their annual salary</b> in recruiting, "
+        "onboarding and lost productivity. This dashboard pinpoints <b>who</b> is at risk, "
+        f"<b>why</b> they leave, and <b>where</b> HR should act first — built on {raw_row_count():,} "
+        f"raw records de-duplicated to <b>{total:,} unique employees</b>.",
+        accent=INDIGO,
+    )
 
 
 def section_eda(df: pd.DataFrame) -> None:
-    st.subheader("Exploratory Analysis")
+    sec("Diagnosis", "Why Employees Leave", "Where attrition concentrates and the patterns behind it")
 
-    # Attrition by department
     dept = (
-        df.groupby("Department")["left"]
-        .agg(total="count", left="sum")
-        .reset_index()
+        df.groupby("Department")["left"].agg(total="count", left="sum").reset_index()
     )
     dept["attrition_rate"] = (dept["left"] / dept["total"] * 100).round(1)
     dept = dept.sort_values("attrition_rate", ascending=False)
@@ -215,316 +500,294 @@ def section_eda(df: pd.DataFrame) -> None:
     )
     sal["attrition_rate"] = (sal["left"] / sal["total"] * 100).round(1)
 
-    c1, c2 = st.columns(2)
+    c1, c2 = st.columns(2, gap="medium")
     with c1:
-        st.markdown("**Attrition Rate by Department**")
-        fig = px.bar(
-            dept,
-            x="attrition_rate",
-            y="Department",
-            orientation="h",
-            color="attrition_rate",
-            color_continuous_scale="Reds",
-            labels={"attrition_rate": "Attrition Rate (%)", "Department": ""},
-        )
-        fig.update_layout(height=380, coloraxis_showscale=False, margin=dict(t=10))
-        st.plotly_chart(fig, use_container_width=True)
+        with st.container(border=True):
+            chart_head("Attrition Rate by Department")
+            fig = px.bar(
+                dept, x="attrition_rate", y="Department", orientation="h",
+                color="attrition_rate", color_continuous_scale=ATTR_SCALE,
+                labels={"attrition_rate": "Attrition Rate (%)", "Department": ""},
+            )
+            apply_theme(fig, 380, legend=False)
+            fig.update_layout(coloraxis_showscale=False)
+            st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
     with c2:
-        st.markdown("**Attrition Rate by Salary Band**")
-        fig = px.bar(
-            sal,
-            x="salary",
-            y="attrition_rate",
-            color="attrition_rate",
-            color_continuous_scale="Reds",
-            labels={"attrition_rate": "Attrition Rate (%)", "salary": "Salary Band"},
-        )
-        fig.update_layout(height=380, coloraxis_showscale=False, margin=dict(t=10))
-        st.plotly_chart(fig, use_container_width=True)
+        with st.container(border=True):
+            chart_head("Attrition Rate by Salary Band")
+            fig = px.bar(
+                sal, x="salary", y="attrition_rate",
+                color="attrition_rate", color_continuous_scale=ATTR_SCALE,
+                labels={"attrition_rate": "Attrition Rate (%)", "salary": "Salary Band"},
+            )
+            apply_theme(fig, 380, legend=False)
+            fig.update_layout(coloraxis_showscale=False)
+            st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
 
-    st.divider()
-
-    # Satisfaction distribution & the famous scatter
-    c3, c4 = st.columns(2)
+    c3, c4 = st.columns(2, gap="medium")
     with c3:
-        st.markdown("**Satisfaction Level: Stayed vs Left**")
-        plot_df = df.assign(
-            Status=np.where(df["left"] == 1, "Left", "Stayed")
-        )
-        fig = px.histogram(
-            plot_df,
-            x="satisfaction_level",
-            color="Status",
-            nbins=25,
-            barmode="overlay",
-            opacity=0.75,
-            color_discrete_map={"Left": LEFT_COLOR, "Stayed": STAYED_COLOR},
-            labels={"satisfaction_level": "Satisfaction Level"},
-        )
-        fig.update_layout(height=380, margin=dict(t=10))
-        st.plotly_chart(fig, use_container_width=True)
+        with st.container(border=True):
+            chart_head("Satisfaction Level: Stayed vs Left", "The bimodal signature of churn")
+            plot_df = df.assign(Status=np.where(df["left"] == 1, "Left", "Stayed"))
+            fig = px.histogram(
+                plot_df, x="satisfaction_level", color="Status", nbins=25,
+                barmode="overlay", opacity=0.75,
+                color_discrete_map={"Left": LEFT_COLOR, "Stayed": STAYED_COLOR},
+                labels={"satisfaction_level": "Satisfaction Level"},
+            )
+            apply_theme(fig, 380)
+            st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
     with c4:
-        st.markdown("**Satisfaction vs Evaluation (the 3 churn clusters)**")
+        with st.container(border=True):
+            chart_head("Project Load U-Curve", "Churn spikes at the extremes; 3–5 projects is the sweet spot")
+            proj = (
+                df.groupby("number_project")
+                .agg(total=("left", "count"), left=("left", "sum"), avg_hours=("average_monthly_hours", "mean"))
+                .reset_index()
+            )
+            proj["attrition_rate"] = (proj["left"] / proj["total"] * 100).round(1)
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            fig.add_bar(
+                x=proj["number_project"], y=proj["attrition_rate"],
+                name="Attrition Rate (%)", marker_color=ROSE, opacity=0.85,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=proj["number_project"], y=proj["avg_hours"],
+                    name="Avg Monthly Hours", mode="lines+markers",
+                    line=dict(color=INDIGO, width=3),
+                ),
+                secondary_y=True,
+            )
+            fig.add_vrect(x0=2.5, x1=5.5, fillcolor=TEAL, opacity=0.08, line_width=0)
+            apply_theme(fig, 380)
+            fig.update_xaxes(title_text="Number of Projects")
+            fig.update_yaxes(title_text="Attrition Rate (%)", secondary_y=False)
+            fig.update_yaxes(title_text="Avg Hours", secondary_y=True, showgrid=False)
+            st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
+
+    with st.container(border=True):
+        chart_head(
+            "Leaver Clusters in 3D",
+            "Satisfaction × Evaluation × Monthly Hours — drag to rotate",
+        )
         plot_df = df.assign(Status=np.where(df["left"] == 1, "Left", "Stayed"))
-        fig = px.scatter(
-            plot_df,
-            x="satisfaction_level",
-            y="last_evaluation",
-            color="Status",
-            opacity=0.45,
+        fig = px.scatter_3d(
+            plot_df, x="satisfaction_level", y="last_evaluation",
+            z="average_monthly_hours", color="Status", opacity=0.55,
             color_discrete_map={"Left": LEFT_COLOR, "Stayed": STAYED_COLOR},
             labels={
-                "satisfaction_level": "Satisfaction Level",
-                "last_evaluation": "Last Evaluation",
+                "satisfaction_level": "Satisfaction",
+                "last_evaluation": "Evaluation",
+                "average_monthly_hours": "Monthly Hours",
             },
         )
-        fig.update_layout(height=380, margin=dict(t=10))
-        st.plotly_chart(fig, use_container_width=True)
-
-    st.divider()
-
-    # Projects vs hours, and tenure
-    proj = (
-        df.groupby("number_project")
-        .agg(
-            total=("left", "count"),
-            left=("left", "sum"),
-            avg_hours=("average_monthly_hours", "mean"),
+        fig.update_traces(marker=dict(size=2.6))
+        apply_theme(fig, 540)
+        fig.update_layout(
+            scene=dict(
+                xaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(148,163,184,0.25)"),
+                yaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(148,163,184,0.25)"),
+                zaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(148,163,184,0.25)"),
+            )
         )
-        .reset_index()
-    )
-    proj["attrition_rate"] = (proj["left"] / proj["total"] * 100).round(1)
+        st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
 
-    tenure = (
-        df.groupby("time_spend_company")
-        .agg(total=("left", "count"), left=("left", "sum"))
-        .reset_index()
-    )
-    tenure["attrition_rate"] = (tenure["left"] / tenure["total"] * 100).round(1)
-
-    c5, c6 = st.columns(2)
+    c5, c6 = st.columns(2, gap="medium")
     with c5:
-        st.markdown("**Attrition Rate by Number of Projects**")
-        fig = px.bar(
-            proj,
-            x="number_project",
-            y="attrition_rate",
-            color="attrition_rate",
-            color_continuous_scale="Reds",
-            labels={
-                "number_project": "Number of Projects",
-                "attrition_rate": "Attrition Rate (%)",
-            },
-        )
-        fig.update_layout(height=360, coloraxis_showscale=False, margin=dict(t=10))
-        st.plotly_chart(fig, use_container_width=True)
+        with st.container(border=True):
+            chart_head("Attrition Rate by Tenure", "The critical 3–5 year churn window")
+            tenure = (
+                df.groupby("time_spend_company")
+                .agg(total=("left", "count"), left=("left", "sum"))
+                .reset_index()
+            )
+            tenure["attrition_rate"] = (tenure["left"] / tenure["total"] * 100).round(1)
+            fig = px.line(
+                tenure, x="time_spend_company", y="attrition_rate", markers=True,
+                labels={"time_spend_company": "Years at Company", "attrition_rate": "Attrition Rate (%)"},
+            )
+            fig.update_traces(line=dict(color=INDIGO, width=3), marker=dict(size=8))
+            fig.add_vrect(x0=2.5, x1=5.5, fillcolor=ROSE, opacity=0.07, line_width=0)
+            apply_theme(fig, 380, legend=False)
+            st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
     with c6:
-        st.markdown("**Attrition Rate by Tenure**")
-        fig = px.line(
-            tenure,
-            x="time_spend_company",
-            y="attrition_rate",
-            markers=True,
-            labels={
-                "time_spend_company": "Years at Company",
-                "attrition_rate": "Attrition Rate (%)",
-            },
-        )
-        fig.update_traces(line_color=ACCENT)
-        fig.update_layout(height=360, margin=dict(t=10))
-        st.plotly_chart(fig, use_container_width=True)
+        with st.container(border=True):
+            chart_head("Departmental Brain Drain", "Evaluation gap between those who left vs stayed")
+            stay = df[df["left"] == 0].groupby("Department")["last_evaluation"].mean()
+            leave = df[df["left"] == 1].groupby("Department")["last_evaluation"].mean()
+            dd = (
+                pd.concat([stay.rename("stay"), leave.rename("leave")], axis=1)
+                .reset_index()
+                .sort_values("leave")
+            )
+            fig = go.Figure()
+            for _, r in dd.iterrows():
+                fig.add_trace(
+                    go.Scatter(
+                        x=[r["stay"], r["leave"]], y=[r["Department"], r["Department"]],
+                        mode="lines", line=dict(color="rgba(148,163,184,0.45)", width=3),
+                        showlegend=False, hoverinfo="skip",
+                    )
+                )
+            fig.add_trace(go.Scatter(x=dd["stay"], y=dd["Department"], mode="markers", name="Stayed", marker=dict(color=TEAL, size=11)))
+            fig.add_trace(go.Scatter(x=dd["leave"], y=dd["Department"], mode="markers", name="Left", marker=dict(color=ROSE, size=11)))
+            apply_theme(fig, 380)
+            fig.update_xaxes(title_text="Avg Last Evaluation")
+            st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
 
-    st.divider()
-    st.markdown("**Correlation Heatmap (numeric features)**")
-    num_cols = [
-        "satisfaction_level",
-        "last_evaluation",
-        "number_project",
-        "average_monthly_hours",
-        "time_spend_company",
-        "Work_accident",
-        "promotion_last_5years",
-        "left",
-    ]
-    corr = df[num_cols].corr().round(2)
-    fig = px.imshow(
-        corr,
-        text_auto=True,
-        color_continuous_scale="RdBu_r",
-        zmin=-1,
-        zmax=1,
-        aspect="auto",
-    )
-    fig.update_layout(height=520, margin=dict(t=10))
-    st.plotly_chart(fig, use_container_width=True)
+    with st.container(border=True):
+        chart_head("Correlation Heatmap", "How the numeric drivers relate to each other and to leaving")
+        num_cols = [
+            "satisfaction_level", "last_evaluation", "number_project",
+            "average_monthly_hours", "time_spend_company", "Work_accident",
+            "promotion_last_5years", "left",
+        ]
+        corr = df[num_cols].corr().round(2)
+        fig = px.imshow(
+            corr, text_auto=True, color_continuous_scale="RdBu_r",
+            zmin=-1, zmax=1, aspect="auto",
+        )
+        apply_theme(fig, 520)
+        st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
 
 
 def section_model(df: pd.DataFrame) -> None:
-    st.subheader("Predictive Attrition Model")
+    sec("Prediction", "Predictive Attrition Model", "Comparing three classifiers to flag at-risk employees early")
     with st.spinner("Training models on the employee dataset…"):
         bundle = train_models(df)
 
     results = bundle["results"]
-    st.caption(
-        f"Trained on {bundle['n_train']:,} employees, "
-        f"evaluated on a held-out test set of {bundle['n_test']:,}."
+    order = ["Logistic Regression", "Decision Tree", "Random Forest"]
+    f1s = [results[m]["f1"] for m in order]
+    champion_idx = int(np.argmax(f1s))
+    best = order[champion_idx]
+
+    with st.container(border=True):
+        chart_head("Model Comparison", f"Trained on {bundle['n_train']:,} employees · evaluated on {bundle['n_test']:,} held-out")
+        rows = [
+            [
+                m,
+                f"{results[m]['accuracy']:.3f}",
+                f"{results[m]['precision']:.3f}",
+                f"{results[m]['recall']:.3f}",
+                f"{results[m]['f1']:.3f}",
+                f"{results[m]['roc_auc']:.3f}",
+            ]
+            for m in order
+        ]
+        glass_table(
+            ["Model", "Accuracy", "Precision", "Recall", "F1 Score", "ROC-AUC"],
+            rows, highlight=champion_idx,
+        )
+
+    callout(
+        f"<b>Champion model: {best}</b> — it best balances precision and recall, correctly "
+        "flagging employees who are about to leave while keeping false alarms low.",
+        accent=TEAL,
     )
 
-    comparison = pd.DataFrame(
-        {
-            "Model": list(results.keys()),
-            "Accuracy": [results[m]["accuracy"] for m in results],
-            "Precision": [results[m]["precision"] for m in results],
-            "Recall": [results[m]["recall"] for m in results],
-            "F1 Score": [results[m]["f1"] for m in results],
-            "ROC-AUC": [results[m]["roc_auc"] for m in results],
-        }
-    )
-    st.markdown("**Model Comparison**")
-    st.dataframe(
-        comparison.style.format(
-            {
-                "Accuracy": "{:.3f}",
-                "Precision": "{:.3f}",
-                "Recall": "{:.3f}",
-                "F1 Score": "{:.3f}",
-                "ROC-AUC": "{:.3f}",
-            }
-        ),
-        use_container_width=True,
-        hide_index=True,
-    )
-
-    best = comparison.loc[comparison["F1 Score"].idxmax(), "Model"]
-    st.success(
-        f"**Champion model: {best}** — it best balances precision and recall, "
-        "correctly flagging employees who are about to leave while keeping "
-        "false alarms low."
-    )
-
-    st.divider()
     rf = results["Random Forest"]
-    c1, c2 = st.columns([1, 1])
+    c1, c2 = st.columns(2, gap="medium")
     with c1:
-        st.markdown("**Random Forest — Confusion Matrix**")
-        cm = rf["confusion"]
-        cm_fig = px.imshow(
-            cm,
-            text_auto=True,
-            color_continuous_scale="Blues",
-            labels=dict(x="Predicted", y="Actual", color="Count"),
-            x=["Stayed", "Left"],
-            y=["Stayed", "Left"],
-        )
-        cm_fig.update_layout(height=380, margin=dict(t=10), coloraxis_showscale=False)
-        st.plotly_chart(cm_fig, use_container_width=True)
-        st.caption(
-            f"Recall {rf['recall']:.1%} — of all employees who actually left, "
-            f"the model catches {rf['recall']:.0%} of them."
-        )
+        with st.container(border=True):
+            chart_head("Random Forest — Confusion Matrix")
+            cm = rf["confusion"]
+            cm_fig = px.imshow(
+                cm, text_auto=True, color_continuous_scale="Blues",
+                labels=dict(x="Predicted", y="Actual", color="Count"),
+                x=["Stayed", "Left"], y=["Stayed", "Left"],
+            )
+            apply_theme(cm_fig, 380, legend=False)
+            cm_fig.update_layout(coloraxis_showscale=False)
+            st.plotly_chart(cm_fig, use_container_width=True, config=CHART_CONFIG)
+            st.caption(
+                f"Recall {rf['recall']:.1%} — of all employees who actually left, "
+                f"the model catches {rf['recall']:.0%} of them."
+            )
     with c2:
-        st.markdown("**What Drives Attrition (feature importance)**")
-        imp = bundle["feature_importance"].head(10).iloc[::-1]
-        fig = px.bar(
-            imp,
-            x="importance",
-            y="feature",
-            orientation="h",
-            color="importance",
-            color_continuous_scale="Purples",
-            labels={"importance": "Importance", "feature": ""},
-        )
-        fig.update_layout(height=380, coloraxis_showscale=False, margin=dict(t=10))
-        st.plotly_chart(fig, use_container_width=True)
+        with st.container(border=True):
+            chart_head("What Drives Attrition", "Random Forest feature importance")
+            imp = bundle["feature_importance"].head(10).iloc[::-1]
+            fig = px.bar(
+                imp, x="importance", y="feature", orientation="h",
+                color="importance", color_continuous_scale=IMP_SCALE,
+                labels={"importance": "Importance", "feature": ""},
+            )
+            apply_theme(fig, 380, legend=False)
+            fig.update_layout(coloraxis_showscale=False)
+            st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
 
 
 def section_profiles(df: pd.DataFrame) -> None:
-    st.subheader("Churn Profiles & Recommendations")
-    leavers = df[df["left"] == 1]
+    sec("Action", "Leaver Profiles & Recommendations", "Three distinct churn segments — and what HR should do about each")
+    leavers, burned, unhappy, apathetic = leaver_profiles(df)
     n_leavers = len(leavers)
-
-    burned = leavers[
-        (leavers["last_evaluation"] >= 0.75)
-        & (leavers["average_monthly_hours"] >= 230)
-    ]
-    unhappy = leavers[
-        (leavers["last_evaluation"] < 0.60) & (leavers["satisfaction_level"] < 0.20)
-    ]
-    apathetic = leavers.drop(burned.index).drop(
-        unhappy.index, errors="ignore"
-    )
 
     profiles = [
         {
-            "name": "Burned Out Stars",
-            "rows": burned,
-            "color": LEFT_COLOR,
-            "desc": "High performers crushed by overwork. Top evaluations but "
-            "driven out by excessive hours.",
-            "action": "Immediate workload reduction. Cap projects at 4. "
-            "Mandatory PTO. Senior mentorship.",
+            "name": "Burned Out Stars", "rows": burned, "color": ROSE,
+            "desc": "High performers crushed by overwork. Top evaluations but driven out by excessive hours.",
+            "action": "Immediate workload reduction. Cap projects at 4. Mandatory PTO. Senior mentorship.",
         },
         {
-            "name": "Unhappy Underperformers",
-            "rows": unhappy,
-            "color": "#f59e0b",
-            "desc": "Low satisfaction paired with poor performance — often "
-            "under-utilized on very few projects.",
-            "action": "1:1 career development. Role reassignment. Structured "
-            "performance improvement plans.",
+            "name": "Unhappy Underperformers", "rows": unhappy, "color": AMBER,
+            "desc": "Low satisfaction paired with poor performance — often under-utilized on very few projects.",
+            "action": "1:1 career development. Role reassignment. Structured performance improvement plans.",
         },
         {
-            "name": "Apathetic Middle",
-            "rows": apathetic,
-            "color": "#8b5cf6",
-            "desc": "Average performers with moderate but declining "
-            "satisfaction. Promotion and recognition gaps.",
-            "action": "Career-path visibility. Transparent promotion criteria. "
-            "Salary reviews for 3+ year staff.",
+            "name": "Apathetic Middle", "rows": apathetic, "color": VIOLET,
+            "desc": "Average performers with moderate but declining satisfaction. Promotion and recognition gaps.",
+            "action": "Career-path visibility. Transparent promotion criteria. Salary reviews for 3+ year staff.",
         },
     ]
 
-    cols = st.columns(3)
+    cols = st.columns(3, gap="medium")
     for col, p in zip(cols, profiles):
         rows = p["rows"]
         pct = len(rows) / n_leavers * 100 if n_leavers else 0
         with col:
-            st.markdown(f"### {p['name']}")
-            st.metric("Share of leavers", f"{pct:.0f}%")
-            st.caption(f"{len(rows):,} of {n_leavers:,} employees who left")
-            st.write(p["desc"])
-            st.caption(
-                f"Avg satisfaction {rows['satisfaction_level'].mean():.2f} · "
-                f"Avg evaluation {rows['last_evaluation'].mean():.2f} · "
-                f"Avg hours {rows['average_monthly_hours'].mean():.0f}/mo"
+            st.markdown(
+                f'<div class="profile-card" style="--accent:{p["color"]}">'
+                f'<div class="profile-name">{p["name"]}</div>'
+                f'<div class="profile-share">{pct:.0f}%</div>'
+                f'<div class="profile-count">{len(rows):,} of {n_leavers:,} who left</div>'
+                f'<div class="profile-desc">{p["desc"]}</div>'
+                f'<div class="profile-stats">Satisfaction {rows["satisfaction_level"].mean():.2f} · '
+                f'Evaluation {rows["last_evaluation"].mean():.2f} · '
+                f'{rows["average_monthly_hours"].mean():.0f} hrs/mo</div>'
+                f'<div class="profile-action"><b>Action:</b> {p["action"]}</div>'
+                f"</div>",
+                unsafe_allow_html=True,
             )
-            st.markdown(f"**Action plan:** {p['action']}")
 
-    st.divider()
-    st.markdown("**Key Risk Factors**")
-    risk = pd.DataFrame(
-        [
-            ["Low Satisfaction (< 0.4)", "Leave at ~3× the rate of satisfied peers"],
-            ["Overwork (> 250 hrs/mo)", "Strong burnout signal predicting departure"],
-            ["Too Many Projects (≥ 6)", "45–53% attrition among heavily loaded staff"],
-            ["No Promotion in 5 yrs", "Only ~2% promoted; stalled career growth"],
-            ["Low Salary Band", "29% attrition vs ~7% for high-salary employees"],
-        ],
-        columns=["Risk Factor", "Impact"],
-    )
-    st.dataframe(risk, use_container_width=True, hide_index=True)
-
-    st.markdown("**Recommendations for HR Leadership**")
-    st.write(
-        "- **Fix the overwork engine.** Cap monthly hours and project counts; the "
-        "highest performers are leaving from burnout, not lack of ability.\n"
-        "- **Act on satisfaction early.** Pulse surveys and manager check-ins for "
-        "anyone trending below 0.4 satisfaction.\n"
-        "- **Unblock career growth.** Clear promotion criteria and salary reviews, "
-        "especially for employees at 3+ years of tenure.\n"
-        "- **Deploy the model.** Score employees quarterly and route high-risk "
-        "individuals to targeted retention conversations."
-    )
+    c1, c2 = st.columns([1, 1], gap="medium")
+    with c1:
+        with st.container(border=True):
+            chart_head("Key Risk Factors")
+            glass_table(
+                ["Risk Factor", "Impact"],
+                [
+                    ["Low Satisfaction (&lt; 0.4)", "~3× the leave rate of satisfied peers"],
+                    ["Overwork (&gt; 250 hrs/mo)", "Strong burnout signal of departure"],
+                    ["Too Many Projects (≥ 6)", "45–53% attrition under heavy load"],
+                    ["No Promotion in 5 yrs", "Only ~2% promoted; stalled growth"],
+                    ["Low Salary Band", "29% attrition vs ~7% for high salary"],
+                ],
+            )
+    with c2:
+        with st.container(border=True):
+            chart_head("Recommendations for HR Leadership")
+            st.markdown(
+                "- **Fix the overwork engine.** Cap monthly hours and project counts; the highest "
+                "performers are leaving from burnout, not lack of ability.\n"
+                "- **Act on satisfaction early.** Pulse surveys and manager check-ins for anyone "
+                "trending below 0.4 satisfaction.\n"
+                "- **Unblock career growth.** Clear promotion criteria and salary reviews, especially "
+                "at 3+ years of tenure.\n"
+                "- **Deploy the model.** Score employees quarterly and route high-risk individuals "
+                "to targeted retention conversations."
+            )
 
 
 # --------------------------------------------------------------------------- #
@@ -536,32 +799,30 @@ def main() -> None:
         page_icon="📊",
         layout="wide",
     )
-
+    inject_css()
     df = load_data()
 
-    st.title("Salifort Motors: Employee Turnover & Retention Dashboard")
-    st.caption(
-        "Identifying who leaves, why, and where to act — based on "
-        "~12,000 employee records."
+    st.markdown(
+        '<div class="app-header">'
+        '<div class="app-logo">S</div>'
+        "<div>"
+        '<div class="app-title">Salifort Motors · People Analytics</div>'
+        '<div class="app-sub">Employee turnover &amp; retention — who leaves, why, and where to act '
+        "(~12,000 employee records)</div>"
+        "</div></div>",
+        unsafe_allow_html=True,
     )
 
-    section = st.sidebar.radio(
-        "Navigate",
-        ["Overview", "Exploratory Analysis", "Predictive Model", "Churn Profiles & Recommendations"],
+    tab_overview, tab_eda, tab_model, tab_profiles = st.tabs(
+        ["  Overview  ", "  Why They Leave  ", "  Predictive Model  ", "  Profiles & Actions  "]
     )
-    st.sidebar.divider()
-    st.sidebar.caption(
-        "Capstone project · Google Advanced Data Analytics\n\n"
-        "Built with Streamlit, pandas, scikit-learn & Plotly."
-    )
-
-    if section == "Overview":
+    with tab_overview:
         section_overview(df)
-    elif section == "Exploratory Analysis":
+    with tab_eda:
         section_eda(df)
-    elif section == "Predictive Model":
+    with tab_model:
         section_model(df)
-    else:
+    with tab_profiles:
         section_profiles(df)
 
 
