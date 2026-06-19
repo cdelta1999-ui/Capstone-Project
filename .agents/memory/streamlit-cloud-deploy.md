@@ -20,6 +20,17 @@ followed by `health ... http://localhost:8501/healthz ... connection refused`.
 --server.port 5000`) or in a subfolder config the Cloud CWD won't read — never in the repo-root
 config. For Cloud, let Streamlit use its default port.
 
+## Theme on Cloud: use a THEME-ONLY repo-root config
+**Rule:** To style the Cloud app, put `[theme]` (and nothing else) in the **repo-root**
+`.streamlit/config.toml`. A subfolder config is ignored by Cloud when the entrypoint is the
+root shim, so a nested theme never takes effect there. Never add `[server]` to this root
+config (see the port section above). Local/Render port settings belong in the subfolder
+config that the local working directory reads.
+
+**Why:** Most visual polish can be injected with CSS via `st.markdown(unsafe_allow_html=True)`,
+but base theme tokens (primary colour, light/dark base, default text colour) only come from a
+config Cloud actually reads — which is the repo-root one.
+
 ## Cloud prefers uv.lock / pyproject.toml over requirements.txt
 **Rule:** If a repo-root `uv.lock` (or `pyproject.toml`) exists, Cloud installs with `uv-sync`
 from the lock and **ignores `requirements.txt`** (it logs a "More than one requirements file
