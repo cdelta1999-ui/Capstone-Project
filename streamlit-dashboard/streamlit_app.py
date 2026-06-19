@@ -190,6 +190,7 @@ def apply_theme(fig: go.Figure, height: int | None = None, legend: bool = True):
         margin=dict(t=12, r=12, b=8, l=8),
         hoverlabel=dict(font_family=PLOT_FONT, bgcolor="white"),
         colorway=[INDIGO, TEAL, ROSE, AMBER, VIOLET, SKY],
+        barcornerradius=8,
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -210,6 +211,103 @@ def apply_theme(fig: go.Figure, height: int | None = None, legend: bool = True):
     return fig
 
 
+def attrition_flow_svg(
+    total: int, stayed: int, left: int, segments: list[tuple[str, int, str]]
+) -> str:
+    """Hand-built SVG flow diagram mirroring the React SankeyFlow component:
+    All Employees -> Stayed / Left -> leaver profiles. Profiles are spread into
+    even vertical slots so their labels never collide, and an "Other leavers"
+    node is added if the profiles don't fully account for every leaver."""
+    W, H = 680, 300
+    col1x, col2x, col3x = 60, 250, 432
+    node_w = 15
+    pad_top = 16
+    usable_h = H - pad_top * 2
+    branch_gap = 26
+    avail_h = usable_h - branch_gap
+
+    total = max(total, 1)
+    left = max(left, 1)
+    stayed_h = stayed / total * avail_h
+    left_h = left / total * avail_h
+    stayed_y = pad_top
+    left_y = pad_top + stayed_h + branch_gap
+
+    segs = list(segments)
+    other = left - sum(c for _, c, _ in segs)
+    if other > 1:
+        segs.append(("Other leavers", other, SLATE))
+
+    slot_h = usable_h / max(len(segs), 1)
+    cursor = left_y
+    nodes = []
+    for i, (name, count, color) in enumerate(segs):
+        src_h = max(count / left * left_h, 1.5)
+        src_y = cursor
+        cursor += count / left * left_h
+        node_h = max(count / left * usable_h, 16)
+        slot_center = pad_top + i * slot_h + slot_h / 2
+        nodes.append((name, count, color, src_y, src_h, node_h, slot_center - node_h / 2))
+
+    def ribbon(x1, y1, h1, x2, y2, h2, color, op):
+        mx = (x1 + x2) / 2
+        d = (
+            f"M{x1:.1f},{y1:.1f} C{mx:.1f},{y1:.1f} {mx:.1f},{y2:.1f} {x2:.1f},{y2:.1f} "
+            f"L{x2:.1f},{y2 + h2:.1f} C{mx:.1f},{y2 + h2:.1f} {mx:.1f},{y1 + h1:.1f} {x1:.1f},{y1 + h1:.1f} Z"
+        )
+        return f'<path d="{d}" class="depth-lift-soft" fill="{color}" opacity="{op}"/>'
+
+    def spine(x1, y1, h1, x2, y2, h2, color):
+        mx = (x1 + x2) / 2
+        cy1 = y1 + h1 / 2
+        cy2 = y2 + h2 / 2
+        d = f"M{x1:.1f},{cy1:.1f} C{mx:.1f},{cy1:.1f} {mx:.1f},{cy2:.1f} {x2:.1f},{cy2:.1f}"
+        return (
+            f'<path d="{d}" fill="none" stroke="{color}" stroke-width="1.5" '
+            f'stroke-opacity="0.5" stroke-linecap="round" class="sankey-flow"/>'
+        )
+
+    def rect(x, y, h, color):
+        return (
+            f'<rect class="depth-lift" x="{x:.1f}" y="{y:.1f}" width="{node_w}" '
+            f'height="{h:.1f}" rx="4" fill="{color}"/>'
+        )
+
+    def label(x, y, name, count, anchor="start", name_size=11.0):
+        a = f' text-anchor="{anchor}"' if anchor != "start" else ""
+        return (
+            f'<text x="{x:.1f}" y="{y - 3:.1f}" font-size="{name_size}" fill="#334155" font-weight="600"{a}>{name}</text>'
+            f'<text x="{x:.1f}" y="{y + 11:.1f}" font-size="9.5" fill="#64748b"{a}>{count:,}</text>'
+        )
+
+    p: list[str] = []
+    p.append(ribbon(col1x + node_w, pad_top, stayed_h, col2x, stayed_y, stayed_h, TEAL, 0.20))
+    p.append(ribbon(col1x + node_w, pad_top + stayed_h, left_h, col2x, left_y, left_h, ROSE, 0.20))
+    for name, count, color, src_y, src_h, node_h, y in nodes:
+        p.append(ribbon(col2x + node_w, src_y, src_h, col3x, y, node_h, color, 0.26))
+    p.append(spine(col1x + node_w, pad_top, stayed_h, col2x, stayed_y, stayed_h, TEAL))
+    p.append(spine(col1x + node_w, pad_top + stayed_h, left_h, col2x, left_y, left_h, ROSE))
+    for name, count, color, src_y, src_h, node_h, y in nodes:
+        p.append(spine(col2x + node_w, src_y, src_h, col3x, y, node_h, color))
+
+    p.append(rect(col1x, pad_top, avail_h, INDIGO))
+    p.append(label(col1x - 7, pad_top + avail_h / 2, "All", total, anchor="end"))
+    p.append(rect(col2x, stayed_y, stayed_h, TEAL))
+    p.append(label(col2x + node_w + 8, stayed_y + stayed_h / 2, "Stayed", stayed))
+    p.append(rect(col2x, left_y, left_h, ROSE))
+    p.append(label(col2x + node_w + 8, left_y + left_h / 2, "Left", left))
+    for name, count, color, src_y, src_h, node_h, y in nodes:
+        p.append(rect(col3x, y, node_h, color))
+        p.append(label(col3x + node_w + 8, y + node_h / 2, name, count, name_size=10.5))
+
+    inner = "".join(p)
+    return (
+        f'<div class="flow-wrap"><svg viewBox="0 0 {W} {H}" '
+        f'preserveAspectRatio="xMidYMid meet" '
+        f'style="width:100%;height:330px;display:block;overflow:visible">{inner}</svg></div>'
+    )
+
+
 def inject_css() -> None:
     st.markdown(
         """
@@ -223,6 +321,14 @@ def inject_css() -> None:
         .kpi-card:nth-child(3){animation-delay:.10s} .kpi-card:nth-child(4){animation-delay:.14s}
         .kpi-card:nth-child(5){animation-delay:.18s} .kpi-card:nth-child(6){animation-delay:.22s}
         .kpi-card:nth-child(7){animation-delay:.26s} .kpi-card:nth-child(8){animation-delay:.30s}
+
+        @keyframes sankeyFlow { to { stroke-dashoffset:-28; } }
+        .sankey-flow { stroke-dasharray:5 9; animation: sankeyFlow 1.2s linear infinite; }
+        .depth-lift { filter: drop-shadow(2px 3px 2px rgba(30,41,59,0.26)); }
+        .depth-lift-soft { filter: drop-shadow(0 4px 5px rgba(30,41,59,0.14)); }
+        .flow-wrap { width:100%; padding:6px 4px 2px; }
+        .flow-wrap svg text { font-family:'Inter', system-ui, sans-serif; }
+        @media (prefers-reduced-motion: reduce){ .sankey-flow { animation:none; } }
 
         html, body, [class*="css"], .stApp,
         [data-testid="stAppViewContainer"], [data-testid="stMarkdownContainer"] {
@@ -453,33 +559,15 @@ def section_overview(df: pd.DataFrame) -> None:
         with st.container(border=True):
             chart_head("Attrition Flow", "From the whole workforce to specific leaver profiles")
             _, burned, unhappy, apathetic = leaver_profiles(df)
-            labels = [
-                "All Employees", "Stayed", "Left",
-                "Burned Out Stars", "Unhappy Underperformers", "Apathetic Middle",
+            segments = [
+                ("Burned Out Stars", len(burned), ROSE),
+                ("Unhappy Underperformers", len(unhappy), AMBER),
+                ("Apathetic Middle", len(apathetic), VIOLET),
             ]
-            node_colors = [INDIGO, TEAL, ROSE, ROSE, AMBER, VIOLET]
-            link_colors = [
-                "rgba(20,184,166,0.35)", "rgba(244,63,94,0.30)",
-                "rgba(244,63,94,0.30)", "rgba(245,158,11,0.30)", "rgba(139,92,246,0.30)",
-            ]
-            sankey = go.Figure(
-                go.Sankey(
-                    arrangement="snap",
-                    node=dict(
-                        label=labels, color=node_colors, pad=18, thickness=16,
-                        line=dict(color="white", width=1),
-                    ),
-                    link=dict(
-                        source=[0, 0, 2, 2, 2],
-                        target=[1, 2, 3, 4, 5],
-                        value=[stayed, left, len(burned), len(unhappy), len(apathetic)],
-                        color=link_colors,
-                    ),
-                )
+            st.markdown(
+                attrition_flow_svg(total, stayed, left, segments),
+                unsafe_allow_html=True,
             )
-            apply_theme(sankey, 330, legend=False)
-            sankey.update_layout(font=dict(family=PLOT_FONT, color=INK, size=12))
-            st.plotly_chart(sankey, use_container_width=True, config=CHART_CONFIG)
 
     callout(
         f"Nearly <b>1 in 6 employees</b> ({attrition_rate:.0f}%) left Salifort Motors. "
@@ -563,7 +651,8 @@ def section_eda(df: pd.DataFrame) -> None:
                 go.Scatter(
                     x=proj["number_project"], y=proj["avg_hours"],
                     name="Avg Monthly Hours", mode="lines+markers",
-                    line=dict(color=INDIGO, width=3),
+                    line=dict(color=INDIGO, width=3.5, shape="spline"),
+                    marker=dict(size=9, color=INDIGO, line=dict(color="white", width=2)),
                 ),
                 secondary_y=True,
             )
@@ -630,7 +719,11 @@ def section_eda(df: pd.DataFrame) -> None:
                 tenure, x="time_spend_company", y="attrition_rate", markers=True,
                 labels={"time_spend_company": "Years at Company", "attrition_rate": "Attrition Rate (%)"},
             )
-            fig.update_traces(line=dict(color=INDIGO, width=3), marker=dict(size=8))
+            fig.update_traces(
+                line=dict(color=INDIGO, width=3.5, shape="spline"),
+                marker=dict(size=9, color=INDIGO, line=dict(color="white", width=2)),
+                fill="tozeroy", fillcolor="rgba(99,102,241,0.10)",
+            )
             fig.add_vrect(x0=2.5, x1=5.5, fillcolor=ROSE, opacity=0.07, line_width=0)
             apply_theme(fig, 380, legend=False)
             st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
@@ -653,8 +746,8 @@ def section_eda(df: pd.DataFrame) -> None:
                         showlegend=False, hoverinfo="skip",
                     )
                 )
-            fig.add_trace(go.Scatter(x=dd["stay"], y=dd["Department"], mode="markers", name="Stayed", marker=dict(color=TEAL, size=11)))
-            fig.add_trace(go.Scatter(x=dd["leave"], y=dd["Department"], mode="markers", name="Left", marker=dict(color=ROSE, size=11)))
+            fig.add_trace(go.Scatter(x=dd["stay"], y=dd["Department"], mode="markers", name="Stayed", marker=dict(color=TEAL, size=13, line=dict(color="white", width=2))))
+            fig.add_trace(go.Scatter(x=dd["leave"], y=dd["Department"], mode="markers", name="Left", marker=dict(color=ROSE, size=13, line=dict(color="white", width=2))))
             apply_theme(fig, 380)
             fig.update_xaxes(title_text="Avg Last Evaluation")
             st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
