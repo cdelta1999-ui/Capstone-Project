@@ -10,7 +10,7 @@ Analyzes ~12,000 employee records to predict turnover and recommend retention ac
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
-- `cd streamlit-dashboard && streamlit run app.py --server.port 5000` — run the Python + Streamlit dashboard (port 5000)
+- `cd streamlit-dashboard && streamlit run streamlit_app.py --server.port 5000` — run the Python + Streamlit dashboard (port 5000)
 
 ## Stack
 
@@ -26,7 +26,7 @@ Analyzes ~12,000 employee records to predict turnover and recommend retention ac
 - `artifacts/data-app/` — JS/React interactive HR dashboard (Vite).
 - `artifacts/api-server/` — Express API; HR metric/profile logic in `src/routes/hr.ts` (source of truth for thresholds).
 - `artifacts/api-server/data/hr_data.csv` — original dataset (14,999 rows).
-- `streamlit-dashboard/` — standalone Python + Streamlit capstone rebuild (`app.py`, pinned `requirements.txt`, `data/hr_data.csv`, `.streamlit/config.toml`). Runs outside the pnpm workspace.
+- `streamlit-dashboard/` — standalone Python + Streamlit capstone rebuild (`streamlit_app.py` entry point, pinned `requirements.txt`, `data/hr_data.csv`, `.streamlit/config.toml`). Runs outside the pnpm workspace. `streamlit_app.py` is the conventional Streamlit Community Cloud entry filename.
 
 ## Architecture decisions
 
