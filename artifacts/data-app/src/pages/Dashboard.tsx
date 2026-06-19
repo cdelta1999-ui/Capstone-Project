@@ -147,8 +147,8 @@ export default function Dashboard() {
       {/* ── Header ──────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-end justify-between">
         <div>
-          <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">HR Command Center</h1>
-          <p className="text-xs text-slate-500">People analytics for <span className="font-semibold text-slate-700">{summary.totalEmployees.toLocaleString()} employees</span> — making the cost of attrition actionable</p>
+          <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Salifort Motors: Employee Turnover &amp; Retention Dashboard</h1>
+          <p className="text-xs text-slate-500">Identifying who leaves, why, and where to act — based on <span className="font-semibold text-slate-700">~12,000 employee records</span></p>
         </div>
         <span className="text-[10px] text-slate-400 hidden md:block">Data: HR_comma_sep · {new Date().toLocaleDateString()}</span>
       </motion.div>
