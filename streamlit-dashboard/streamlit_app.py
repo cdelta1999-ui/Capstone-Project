@@ -218,6 +218,12 @@ def inject_css() -> None:
 
         :root { --ink:#0f172a; --slate:#475569; --muted:#94a3b8; --indigo:#6366f1; }
 
+        @keyframes rise { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+        .kpi-card:nth-child(1){animation-delay:.02s} .kpi-card:nth-child(2){animation-delay:.06s}
+        .kpi-card:nth-child(3){animation-delay:.10s} .kpi-card:nth-child(4){animation-delay:.14s}
+        .kpi-card:nth-child(5){animation-delay:.18s} .kpi-card:nth-child(6){animation-delay:.22s}
+        .kpi-card:nth-child(7){animation-delay:.26s} .kpi-card:nth-child(8){animation-delay:.30s}
+
         html, body, [class*="css"], .stApp,
         [data-testid="stAppViewContainer"], [data-testid="stMarkdownContainer"] {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -261,6 +267,7 @@ def inject_css() -> None:
         @media (max-width: 1150px){ .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
         .kpi-card {
             position:relative; overflow:hidden;
+            animation: rise .55s ease both;
             background: rgba(255,255,255,0.72);
             -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
             border:1px solid rgba(255,255,255,0.80);
@@ -295,6 +302,7 @@ def inject_css() -> None:
 
         /* ---- Profile cards ---- */
         .profile-card {
+            animation: rise .55s ease both;
             background: rgba(255,255,255,0.74);
             -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
             border:1px solid rgba(255,255,255,0.80);
@@ -569,20 +577,35 @@ def section_eda(df: pd.DataFrame) -> None:
     with st.container(border=True):
         chart_head(
             "Leaver Clusters in 3D",
-            "Satisfaction × Evaluation × Monthly Hours — drag to rotate",
+            "Satisfaction × Evaluation × Monthly Hours, coloured by leaver profile — drag to rotate",
         )
-        plot_df = df.assign(Status=np.where(df["left"] == 1, "Left", "Stayed"))
+        _, burned, unhappy, apathetic = leaver_profiles(df)
+        seg = pd.Series("Stayed", index=df.index)
+        seg.loc[burned.index] = "Burned Out Stars"
+        seg.loc[unhappy.index] = "Unhappy Underperformers"
+        seg.loc[apathetic.index] = "Apathetic Middle"
+        plot_df = df.assign(Segment=seg)
+        stayed_df = plot_df[plot_df["Segment"] == "Stayed"]
+        stayed_sample = stayed_df.sample(n=min(1500, len(stayed_df)), random_state=42)
+        scatter_df = pd.concat([stayed_sample, plot_df[plot_df["Segment"] != "Stayed"]])
+        seg_colors = {
+            "Stayed": "rgba(148,163,184,0.45)",
+            "Burned Out Stars": ROSE,
+            "Unhappy Underperformers": AMBER,
+            "Apathetic Middle": VIOLET,
+        }
         fig = px.scatter_3d(
-            plot_df, x="satisfaction_level", y="last_evaluation",
-            z="average_monthly_hours", color="Status", opacity=0.55,
-            color_discrete_map={"Left": LEFT_COLOR, "Stayed": STAYED_COLOR},
+            scatter_df, x="satisfaction_level", y="last_evaluation",
+            z="average_monthly_hours", color="Segment", opacity=0.6,
+            color_discrete_map=seg_colors,
+            category_orders={"Segment": list(seg_colors.keys())},
             labels={
                 "satisfaction_level": "Satisfaction",
                 "last_evaluation": "Evaluation",
                 "average_monthly_hours": "Monthly Hours",
             },
         )
-        fig.update_traces(marker=dict(size=2.6))
+        fig.update_traces(marker=dict(size=2.8))
         apply_theme(fig, 540)
         fig.update_layout(
             scene=dict(

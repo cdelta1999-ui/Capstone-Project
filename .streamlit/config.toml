@@ -1,0 +1,10 @@
+# Repo-root config for Streamlit Community Cloud, which runs from the repo root
+# via the streamlit_app.py shim. THEME ONLY — never add a [server] port override
+# here: Cloud health-checks its own default port, and a forced port breaks deploys.
+[theme]
+base = "light"
+primaryColor = "#6366f1"
+backgroundColor = "#f8fafc"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#0f172a"
+font = "sans serif"
