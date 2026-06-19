@@ -1,4 +1,5 @@
 - [WebGL/3D charts](webgl-charts.md) — every r3f chart needs a WebGLBoundary + 2D fallback; animate via refs not per-frame setState; screenshots always show the fallback.
+- [Streamlit dashboard quirks](streamlit-dashboard.md) — st.markdown HTML/SVG: indent 4+ spaces = code-block trap, use "".join(); not an artifact so verify via AppTest not screenshot; match React's hand-built SVG charts; rounded bars need Plotly>=5.18.
 - [Streamlit Cloud deploy](streamlit-cloud-deploy.md) — never pin server.port in the repo-root config (Cloud health-checks 8501); Cloud uses root uv.lock over requirements.txt; read the real deploy log before lowering pins.
 - [Commit & push to GitHub](git-push-github.md) — bash blocks `git commit` but execSync works once you set a repo-local git identity; token via listConnections('github').
 - [Streamlit in this monorepo](streamlit-monorepo.md) — keep Python apps outside artifacts/; run via webview workflow on its own port; verify with AppTest; not on the :80 proxy.
