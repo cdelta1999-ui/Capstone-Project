@@ -3,7 +3,8 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import type { DepartmentAttrition } from "@workspace/api-client-react";
-import { WebGLBoundary, DeptBarsFallback, isWebGLAvailable } from "./WebGLBoundary";
+import { Live3D, ReadySignal } from "./WebGLBoundary";
+import { DeptAttritionBar } from "../DashboardCharts";
 
 const DEPT_COLORS = [
   "#6366f1", // indigo
@@ -109,29 +110,21 @@ function Scene({ data }: DeptBarsProps) {
   );
 }
 
-function DeptBarsCanvas({ data }: DeptBarsProps) {
+function DeptBarsCanvas({ data, onReady }: DeptBarsProps & { onReady: () => void }) {
   return (
     <div className="w-full h-full relative rounded-2xl overflow-hidden cursor-move">
       <Canvas shadows camera={{ position: [0, 8, 20], fov: 45 }} gl={{ alpha: true, antialias: true }}>
         <Scene data={data} />
+        <ReadySignal onReady={onReady} />
       </Canvas>
     </div>
   );
 }
 
 export default function DeptBars({ data }: DeptBarsProps) {
-  const fallbackData = data.map(d => ({
-    department: d.department,
-    attritionRate: d.attritionRate,
-    leftCount: d.left,
-    totalCount: d.total,
-  }));
-  if (!isWebGLAvailable()) {
-    return <DeptBarsFallback data={fallbackData} />;
-  }
   return (
-    <WebGLBoundary fallback={<DeptBarsFallback data={fallbackData} />}>
-      <DeptBarsCanvas data={data} />
-    </WebGLBoundary>
+    <Live3D fallback={<DeptAttritionBar data={data} />}>
+      {(onReady) => <DeptBarsCanvas data={data} onReady={onReady} />}
+    </Live3D>
   );
 }

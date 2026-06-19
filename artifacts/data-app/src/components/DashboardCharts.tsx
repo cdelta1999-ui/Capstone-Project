@@ -84,7 +84,7 @@ function ChartFrame({ wipe = false, children }: {
   const { ref, replayKey } = useScrollReplay();
   const reduce = useReducedMotion();
   return (
-    <div ref={ref} className="w-full h-full">
+    <div ref={ref} className="chart-depth w-full h-full">
       {wipe
         ? <div key={replayKey} className={reduce ? "w-full h-full" : "chart-wipe w-full h-full"}>{children(0)}</div>
         : children(replayKey)}
@@ -164,7 +164,7 @@ export function SankeyFlow({ total, stayed, left, profiles }: {
       <path
         d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}
            L${x2},${y2 + h2} C${mx},${y2 + h2} ${mx},${y1 + h1} ${x1},${y1 + h1} Z`}
-        fill={color} opacity={opacity}
+        className="depth-lift-soft" fill={color} opacity={opacity}
       />
     );
   }
@@ -200,24 +200,24 @@ export function SankeyFlow({ total, stayed, left, profiles }: {
       ))}
 
       {/* All Employees */}
-      <rect x={col1x} y={padTop} width={nodeW} height={availH} rx={4} fill={C.indigo} />
+      <rect className="depth-lift" x={col1x} y={padTop} width={nodeW} height={availH} rx={4} fill={C.indigo} />
       <text x={col1x - 7} y={padTop + availH / 2 - 4} fontSize={11} fill="#334155" fontWeight={600} textAnchor="end">All</text>
       <text x={col1x - 7} y={padTop + availH / 2 + 10} fontSize={9.5} fill="#64748b" textAnchor="end">{total.toLocaleString()}</text>
 
       {/* Stayed */}
-      <rect x={col2x} y={stayedY} width={nodeW} height={stayedH} rx={4} fill={C.teal} />
+      <rect className="depth-lift" x={col2x} y={stayedY} width={nodeW} height={stayedH} rx={4} fill={C.teal} />
       <text x={col2x + nodeW + 8} y={stayedY + stayedH / 2 - 3} fontSize={11} fill="#334155" fontWeight={600}>Stayed</text>
       <text x={col2x + nodeW + 8} y={stayedY + stayedH / 2 + 11} fontSize={9.5} fill="#64748b">{stayed.toLocaleString()}</text>
 
       {/* Left */}
-      <rect x={col2x} y={leftY} width={nodeW} height={leftH} rx={4} fill={C.rose} />
+      <rect className="depth-lift" x={col2x} y={leftY} width={nodeW} height={leftH} rx={4} fill={C.rose} />
       <text x={col2x + nodeW + 8} y={leftY + leftH / 2 - 3} fontSize={11} fill="#334155" fontWeight={600}>Left</text>
       <text x={col2x + nodeW + 8} y={leftY + leftH / 2 + 11} fontSize={9.5} fill="#64748b">{left.toLocaleString()}</text>
 
       {/* Profiles (spread into slots) */}
       {profileNodes.map((p) => (
         <g key={p.name}>
-          <rect x={col3x} y={p.y} width={nodeW} height={p.nodeH} rx={4} fill={p.color} />
+          <rect className="depth-lift" x={col3x} y={p.y} width={nodeW} height={p.nodeH} rx={4} fill={p.color} />
           <text x={col3x + nodeW + 8} y={p.y + p.nodeH / 2 - 3} fontSize={10.5} fill="#334155" fontWeight={600}>{p.name}</text>
           <text x={col3x + nodeW + 8} y={p.y + p.nodeH / 2 + 11} fontSize={9.5} fill="#64748b">{p.count.toLocaleString()}</text>
         </g>
@@ -440,6 +440,7 @@ export function DeptBrainDrainChart({ data }: { data: DeptBrainDrain[] }) {
                 transition={{ duration: 0.45, delay, ease: "easeOut" }}
               />
               <motion.circle
+                className="depth-lift"
                 cx={xs} cy={cy} r={4} fill={C.indigo} style={dotStyle}
                 initial={reduce ? false : { scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -448,6 +449,7 @@ export function DeptBrainDrainChart({ data }: { data: DeptBrainDrain[] }) {
                 <title>{`${r.dept} · stayers ${r.stayed}`}</title>
               </motion.circle>
               <motion.circle
+                className="depth-lift"
                 cx={xl} cy={cy} r={4} fill={C.rose} style={dotStyle}
                 initial={reduce ? false : { scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}

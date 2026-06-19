@@ -3,7 +3,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import type { RiskFactor } from "@workspace/api-client-react";
-import { WebGLBoundary, RiskBarsFallback, isWebGLAvailable } from "./WebGLBoundary";
+import { Live3D, ReadySignal, RiskBarsFallback } from "./WebGLBoundary";
 
 interface RiskDonut3DProps {
   data: RiskFactor[];
@@ -131,12 +131,13 @@ function Scene({ segments }: { segments: Seg[] }) {
   );
 }
 
-function RiskDonut3DCanvas({ data }: RiskDonut3DProps) {
+function RiskDonut3DCanvas({ data, onReady }: RiskDonut3DProps & { onReady: () => void }) {
   const segments = useMemo(() => buildSegments(data), [data]);
   return (
     <div className="w-full h-full relative rounded-2xl overflow-hidden cursor-move">
       <Canvas camera={{ position: [0, 3, 14], fov: 45 }} gl={{ alpha: true, antialias: true }} dpr={[1, 2]}>
         <Scene segments={segments} />
+        <ReadySignal onReady={onReady} />
       </Canvas>
       {/* Legend overlay */}
       <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-x-3 gap-y-0.5 pointer-events-none">
@@ -152,12 +153,9 @@ function RiskDonut3DCanvas({ data }: RiskDonut3DProps) {
 }
 
 export default function RiskDonut3D({ data }: RiskDonut3DProps) {
-  if (!isWebGLAvailable()) {
-    return <RiskBarsFallback data={data} />;
-  }
   return (
-    <WebGLBoundary fallback={<RiskBarsFallback data={data} />}>
-      <RiskDonut3DCanvas data={data} />
-    </WebGLBoundary>
+    <Live3D fallback={<RiskBarsFallback data={data} />}>
+      {(onReady) => <RiskDonut3DCanvas data={data} onReady={onReady} />}
+    </Live3D>
   );
 }

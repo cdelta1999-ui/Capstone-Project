@@ -1,4 +1,5 @@
-import { Component, type ReactNode } from "react";
+import { Component, useCallback, useRef, useState, type ReactNode } from "react";
+import { useFrame } from "@react-three/fiber";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer } from "recharts";
 
 interface Props {
@@ -44,6 +45,63 @@ export function isWebGLAvailable(): boolean {
   }
 }
 
+/**
+ * Drop this inside a <Canvas> to learn when the first GL frame has painted.
+ * Used by Live3D to fade the live layer in over the static fallback so the
+ * chart is never blank during the (sometimes slow) WebGL warm-up.
+ */
+export function ReadySignal({ onReady }: { onReady: () => void }) {
+  const fired = useRef(false);
+  useFrame(() => {
+    if (!fired.current) {
+      fired.current = true;
+      onReady();
+    }
+  });
+  return null;
+}
+
+/**
+ * Wraps a real-3D chart with a print/screenshot-safe layered fallback:
+ *  - no WebGL at all  → render only the 2D fallback.
+ *  - WebGL available  → fallback layer stays painted underneath until the first
+ *                       GL frame fires (ready-gate), then the live canvas fades
+ *                       in on top. In @media print the canvas is hidden and the
+ *                       fallback is shown, so exports always have real content.
+ * `children` is a render-prop receiving an `onReady` callback to hand to a
+ * <ReadySignal> placed inside the <Canvas>.
+ */
+export function Live3D({
+  fallback,
+  children,
+}: {
+  fallback: ReactNode;
+  children: (onReady: () => void) => ReactNode;
+}) {
+  const [ready, setReady] = useState(false);
+  const onReady = useCallback(() => setReady(true), []);
+
+  if (!isWebGLAvailable()) {
+    return <>{fallback}</>;
+  }
+
+  return (
+    <WebGLBoundary fallback={fallback}>
+      <div className="webgl-stack">
+        <div
+          className={`webgl-capture-fallback ${ready ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+          aria-hidden={ready ? true : undefined}
+        >
+          {fallback}
+        </div>
+        <div className={`webgl-live-layer ${ready ? "opacity-100" : "opacity-0"}`}>
+          {children(onReady)}
+        </div>
+      </div>
+    </WebGLBoundary>
+  );
+}
+
 const COLORS = ["#6366f1", "#0ea5e9", "#14b8a6", "#f59e0b", "#f43f5e", "#8b5cf6", "#10b981", "#64748b", "#06b6d4", "#ec4899"];
 
 export function DeptBarsFallback({ data }: { data: Array<{ department: string; attritionRate: number; leftCount: number; totalCount: number }> }) {
@@ -76,7 +134,7 @@ export function RiskBarsFallback({ data }: { data: Array<{ factor: string; impor
         <XAxis type="number" tick={{ fontSize: 11 }} unit="%" domain={[0, 100]} />
         <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={115} />
         <Tooltip formatter={(v) => [`${v}%`, "Risk Score"]} />
-        <Bar dataKey="score" radius={[0, 4, 4, 0]}>
+        <Bar dataKey="score" radius={[0, 4, 4, 0]} isAnimationActive={false}>
           {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
         </Bar>
       </BarChart>

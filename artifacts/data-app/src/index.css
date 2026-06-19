@@ -378,6 +378,38 @@
 }
 .chart-wipe { animation: chartWipe 1.05s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* ── 3D-in-nature depth for flat charts (screenshot/print-safe) ───────────── */
+/* Directional drop-shadows lift recharts/SVG geometry off the page so it reads
+   as extruded/3D without any WebGL. Filters render fine in print. */
+.chart-depth .recharts-bar-rectangle { filter: drop-shadow(2px 4px 2.5px rgba(30, 41, 59, 0.22)); }
+.chart-depth .recharts-area-area { filter: drop-shadow(0 7px 8px rgba(30, 41, 59, 0.12)); }
+.chart-depth .recharts-line-curve { filter: drop-shadow(1.5px 4px 3px rgba(30, 41, 59, 0.20)); }
+.chart-depth .recharts-scatter-symbol { filter: drop-shadow(1px 2px 1.5px rgba(30, 41, 59, 0.22)); }
+.depth-lift { filter: drop-shadow(2px 3px 2px rgba(30, 41, 59, 0.26)); }
+.depth-lift-soft { filter: drop-shadow(0 4px 5px rgba(30, 41, 59, 0.14)); }
+
+/* ── Real-3D (WebGL) layered fallback + capture/print safety ──────────────── */
+/* Each WebGL chart paints a static 2D fallback layer behind the live canvas.
+   The fallback is visible until the first GL frame fires (no slow-init blank),
+   then fades out while the live canvas fades in. Print and browser-native
+   screenshots capture correctly (print forces the fallback; native screenshots
+   read the GL framebuffer). DOM-capture exports that can't read WebGL (e.g.
+   html2canvas) must add `capture-mode` to the root first to force the fallback,
+   exactly like @media print — see the .capture-mode rules below. */
+.webgl-stack { position: relative; width: 100%; height: 100%; }
+.webgl-capture-fallback,
+.webgl-live-layer { position: absolute; inset: 0; transition: opacity 0.5s ease; }
+
+@media print {
+  .webgl-live-layer { display: none !important; }
+  .webgl-capture-fallback { opacity: 1 !important; }
+}
+
+/* Explicit capture hook for non-print DOM-capture exports (html2canvas etc.):
+   toggle `capture-mode` on a root element around the capture, then remove it. */
+.capture-mode .webgl-live-layer { display: none !important; }
+.capture-mode .webgl-capture-fallback { opacity: 1 !important; }
+
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob { animation: none; }
   .sankey-flow { animation: none; }

@@ -1,21 +1,18 @@
-import { Suspense } from "react";
 import { motion } from "framer-motion";
 import KpiCard from "@/components/KpiCard";
 import DeptBars from "@/components/3d/DeptBars";
 import RiskDonut3D from "@/components/3d/RiskDonut3D";
 import ClusterScatter3D from "@/components/3d/ClusterScatter3D";
+import SalaryChurn3D from "@/components/3d/SalaryChurn3D";
 import {
   FeatureImportanceBar,
   UCurveChart,
   FatigueCurveChart,
   SatisfactionDistBar,
   DeptBrainDrainChart,
-  SalaryChurnBar,
   TenureAttritionLine,
   SankeyFlow,
-  DeptAttritionBar,
 } from "@/components/DashboardCharts";
-import { WebGLBoundary } from "@/components/3d/WebGLBoundary";
 
 import {
   useGetHrSummary,
@@ -173,11 +170,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         <Card title="Attrition by Department" subtitle="Share of each team that left — drag to rotate" className="lg:col-span-7 h-[340px]" delay={0.1}>
           {deptForBars.length > 0 ? (
-            <WebGLBoundary fallback={<DeptAttritionBar data={deptForBars} />}>
-              <Suspense fallback={<DeptAttritionBar data={deptForBars} />}>
-                <DeptBars data={deptAttr!} />
-              </Suspense>
-            </WebGLBoundary>
+            <DeptBars data={deptAttr!} />
           ) : <Skeleton />}
         </Card>
         <Card title="Attrition Flow" subtitle={`How ${summary.totalEmployees.toLocaleString()} employees split into stayers, leavers & leaver profiles`} className="lg:col-span-5 h-[340px]" delay={0.15}>
@@ -210,8 +203,8 @@ export default function Dashboard() {
         <Card title="Departmental Brain Drain" subtitle="Leavers score higher on evals" className="h-[240px]" delay={0.1}>
           {brainDrain ? <DeptBrainDrainChart data={brainDrain} /> : <Skeleton />}
         </Card>
-        <Card title="Churn by Salary Band" subtitle="Low earners churn far more" className="h-[240px]" delay={0.15}>
-          {salaryAttr ? <SalaryChurnBar data={salaryAttr} /> : <Skeleton />}
+        <Card title="Churn by Salary Band" subtitle="Low earners churn far more — drag to rotate" className="h-[240px]" delay={0.15}>
+          {salaryAttr ? <SalaryChurn3D data={salaryAttr} /> : <Skeleton />}
         </Card>
         <Card title="Tenure vs Churn Rate" subtitle="Spike at years 3–5" className="h-[240px]" delay={0.2}>
           {tenureAttr ? <TenureAttritionLine data={tenureAttr} /> : <Skeleton />}

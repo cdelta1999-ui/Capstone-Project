@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { ScatterPoint } from "@workspace/api-client-react";
-import { WebGLBoundary, isWebGLAvailable } from "./WebGLBoundary";
+import { Live3D, ReadySignal } from "./WebGLBoundary";
 import { ClusterScatter } from "../DashboardCharts";
 
 const CLUSTER_COLORS: Record<string, string> = {
@@ -115,11 +115,12 @@ function Scene({ data }: { data: ScatterPoint[] }) {
   );
 }
 
-function ClusterScatter3DCanvas({ data }: { data: ScatterPoint[] }) {
+function ClusterScatter3DCanvas({ data, onReady }: { data: ScatterPoint[]; onReady: () => void }) {
   return (
     <div className="w-full h-full relative rounded-2xl overflow-hidden cursor-move">
       <Canvas camera={{ position: [17, 11, 23], fov: 45 }} gl={{ alpha: true, antialias: true }} dpr={[1, 2]}>
         <Scene data={data} />
+        <ReadySignal onReady={onReady} />
       </Canvas>
       {/* Cluster legend */}
       <div className="absolute top-1.5 left-2 flex flex-wrap gap-x-2.5 gap-y-0.5 pointer-events-none">
@@ -139,12 +140,9 @@ function ClusterScatter3DCanvas({ data }: { data: ScatterPoint[] }) {
 }
 
 export default function ClusterScatter3D({ data }: { data: ScatterPoint[] }) {
-  if (!isWebGLAvailable()) {
-    return <ClusterScatter data={data} />;
-  }
   return (
-    <WebGLBoundary fallback={<ClusterScatter data={data} />}>
-      <ClusterScatter3DCanvas data={data} />
-    </WebGLBoundary>
+    <Live3D fallback={<ClusterScatter data={data} />}>
+      {(onReady) => <ClusterScatter3DCanvas data={data} onReady={onReady} />}
+    </Live3D>
   );
 }
