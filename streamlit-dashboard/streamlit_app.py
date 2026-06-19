@@ -324,23 +324,23 @@ def render_rotating_3d(fig: go.Figure, height: int = 560, div_id: str = "cluster
 <style>html,body{margin:0;background:transparent;overflow:hidden}</style>
 <script>
 (function(){
-  var R=1.8, ELEV=0.85, STEP=0.004, ang=Math.PI*0.25, paused=false, resumeAt=0;
-  var HOLD=999999999;
+  var R=1.8, ELEV=0.85, STEP=0.006, ang=Math.PI*0.25, dragging=false, resumeAt=0;
+  function resumeSoon(ms){ dragging=false; resumeAt=Date.now()+(ms||3000); }
   function start(){
     var gd=document.getElementById('__DIV__');
     if(typeof Plotly==='undefined' || !gd || !gd._fullLayout){ return setTimeout(start,200); }
     if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){ return; }
-    gd.addEventListener('mousedown', function(){ paused=true; resumeAt=Date.now()+HOLD; });
-    gd.addEventListener('touchstart', function(){ paused=true; resumeAt=Date.now()+HOLD; }, {passive:true});
-    gd.addEventListener('wheel', function(){ paused=true; resumeAt=Date.now()+4000; }, {passive:true});
-    window.addEventListener('mouseup', function(){ resumeAt=Date.now()+3000; });
-    window.addEventListener('touchend', function(){ resumeAt=Date.now()+3000; });
+    gd.addEventListener('pointerdown', function(){ dragging=true; }, {passive:true});
+    gd.addEventListener('wheel', function(){ resumeSoon(4000); }, {passive:true});
+    window.addEventListener('pointerup', function(){ resumeSoon(3000); });
+    window.addEventListener('pointercancel', function(){ resumeSoon(3000); });
+    window.addEventListener('blur', function(){ resumeSoon(1500); });
     setInterval(function(){
-      if(paused && Date.now()>resumeAt){ paused=false; }
-      if(paused){ return; }
+      if(dragging || Date.now()<resumeAt) { return; }
+      if(document.visibilityState && document.visibilityState!=='visible') { return; }
       ang+=STEP;
       Plotly.relayout(gd, {'scene.camera.eye': {x:R*Math.cos(ang), y:R*Math.sin(ang), z:ELEV}});
-    }, 50);
+    }, 60);
   }
   start();
 })();
