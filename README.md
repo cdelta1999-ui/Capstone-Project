@@ -2,7 +2,7 @@
 
 > Built an ML system that flags at-risk employees with **0.97 AUC** — and translates each prediction into a concrete retention action for HR.
 
-**🔗 [Live Dashboard (Streamlit)]((https://capstone-project-j7wejjq6ti48ugjpoapje8.streamlit.app/))  •  [Interactive Data App]((https://data-insight-suite-daliyachakrobor.replit.app/data-app/insights))  •  [Full Analysis Notebook](salifort_attrition_modeling.ipynb)  •  [Executive Summary (PDF)](Predicting-Employee-Turnover-at-Salifort-Motors.pdf)**
+**🔗 [Live Dashboard (Streamlit)](https://capstone-project-j7wejjq6ti48ugjpoapje8.streamlit.app/)** • **[Interactive Data App](https://data-insight-suite-daliyachakrobor.replit.app/data-app/dashboard)** • **[Full Analysis Notebook](salifort_attrition_modeling.ipynb)** • **[Executive Summary (PDF)](Predicting-Employee-Turnover-at-Salifort-Motors.pdf)**
 
 ---
 
@@ -44,9 +44,11 @@ Exploratory analysis and feature-importance extraction revealed distinct cluster
 
 The findings ship as a 4-step decision journey — *Overview → Why They Leave → Predictive Model → Profiles & Actions.*
 
-![Attrition Overview — workforce KPIs](overview.png)
-![Model comparison — Random Forest champion](model-comparison.png)
-![Leaver profiles and recommended HR actions](profiles-actions.png)
+![Attrition Overview — workforce KPIs](docs/screenshots/overview.png)
+
+![Model comparison — Random Forest champion](docs/screenshots/model-comparison.png)
+
+![Leaver profiles and recommended HR actions](docs/screenshots/profiles-actions.png)
 
 ---
 
