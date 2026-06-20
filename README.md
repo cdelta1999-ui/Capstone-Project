@@ -6,7 +6,21 @@
 
 ---
 
-## 📌 Executive Summary
+## The Story Behind the Data
+
+The HR department at **Salifort Motors** had a problem they couldn't see clearly. Good people were walking out the door, and leadership wanted to do something about it — so HR did what felt right: they surveyed their workforce and gathered data on thousands of employees. Satisfaction scores, project loads, hours worked, tenure, promotions, salary bands — it was all there.
+
+And then they got stuck. The data sat in a spreadsheet, full of answers but speaking a language no one in the room could read. They had the *what*, but not the *why*. So they came to me with a single, very human question:
+
+> **"What's likely to make an employee leave the company?"**
+
+That question became this project. My job was two-fold: dig into the data to understand the real drivers of attrition, and build a model that can predict — *before* it happens — whether a given employee is likely to quit. Because if you can spot a flight risk early, you can act early. And acting early matters: finding, interviewing, onboarding, and training a replacement is slow and expensive, while keeping a great employee who was about to leave is one of the highest-return moves an HR team can make.
+
+The rest of this README is what the data told us — and what Salifort can do about it.
+
+---
+
+## Executive Summary
 
 Salifort Motors loses roughly **1 in 6 employees**, and replacing each one is expensive. Using a dataset of ~12,000 employee records, this project builds a predictive model that identifies flight risks and surfaces the underlying drivers of attrition.
 
@@ -23,13 +37,13 @@ A tuned **Random Forest** classifier flags at-risk employees with high accuracy,
 
 ---
 
-## 🔍 The Business Problem
+## The Business Problem
 
 High turnover hurts both culture and the bottom line. Salifort invests heavily in recruiting, training, and upskilling, so every avoidable departure is a sunk cost. Leadership needed two things: a data-driven understanding of *why* employees leave, and a reliable way to predict *who* will leave next — early enough to act.
 
 ---
 
-## 📊 Key Drivers of Turnover
+## Key Drivers of Turnover
 
 Exploratory analysis and feature-importance extraction revealed distinct clusters of risk:
 
@@ -40,19 +54,19 @@ Exploratory analysis and feature-importance extraction revealed distinct cluster
 
 ---
 
-## 📸 Interactive Dashboard
+## Interactive Dashboard
 
 The findings ship as a 4-step decision journey — *Overview → Why They Leave → Predictive Model → Profiles & Actions.*
 
-![Attrition Overview — workforce KPIs](docs/screenshots/overview.png)
+![Attrition Overview — workforce KPIs](overview.png)
 
-![Model comparison — Random Forest champion](docs/screenshots/model-comparison.png)
+![Model comparison — Random Forest champion](model-comparison.png)
 
-![Leaver profiles and recommended HR actions](docs/screenshots/profiles-actions.png)
+![Leaver profiles and recommended HR actions](profiles-actions.png)
 
 ---
 
-## 💡 Strategic HR Recommendations
+## Strategic HR Recommendations
 
 - **Cap workloads.** Trigger an HR review for anyone on 6+ projects or logging over 240 hours/month.
 - **Re-engage the under-used.** Identify low-satisfaction employees with little project exposure and assign meaningful work.
@@ -62,7 +76,7 @@ The findings ship as a 4-step decision journey — *Overview → Why They Leave 
 
 ---
 
-## 🛠️ Project Structure
+## Project Structure
 
 | File | Description |
 | --- | --- |
@@ -73,7 +87,7 @@ The findings ship as a 4-step decision journey — *Overview → Why They Leave 
 
 ---
 
-## 💻 Technical Stack
+## Technical Stack
 
 - **Language:** Python
 - **Data:** Pandas, NumPy
@@ -83,12 +97,12 @@ The findings ship as a 4-step decision journey — *Overview → Why They Leave 
 
 ---
 
-## 📈 Model Comparison
+## Model Comparison
 
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
 | --- | --- | --- | --- | --- | --- |
 | Logistic Regression | 0.835 | 0.505 | 0.185 | 0.271 | 0.831 |
 | Decision Tree | 0.984 | 0.971 | 0.930 | 0.950 | 0.977 |
-| **Random Forest** ⭐ | **0.986** | **0.991** | **0.926** | **0.957** | **0.980** |
+| **Random Forest**  | **0.986** | **0.991** | **0.926** | **0.957** | **0.980** |
 
 *Trained on 8,993 employees, evaluated on 2,998 held-out records.*
