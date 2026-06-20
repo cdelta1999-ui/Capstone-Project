@@ -1,54 +1,92 @@
-# Predictive Analytics for HR Retention: Identifying Turnover Drivers Using Machine Learning
+# Predicting Employee Turnover at Salifort Motors
+
+> Built an ML system that flags at-risk employees with **0.97 AUC** — and translates each prediction into a concrete retention action for HR.
+
+**🔗 [Live Dashboard (Streamlit)](https://capstone-project-j7wejjq6ti48ugjpoapje8.streamlit.app/)  •  [Interactive Data App](https://data-insight-suite-daliyachakrobor.replit.app/data-app/dashboard)  •  [Full Analysis Notebook](salifort_attrition_modeling.ipynb)  •  [Executive Summary (PDF)](Predicting-Employee-Turnover-at-Salifort-Motors.pdf)**
+
+---
 
 ## 📌 Executive Summary
-[cite_start]Salifort Motors loses approximately 1 in 6 employees, and replacing them is costly[cite: 4]. [cite_start]This project leverages a dataset of ~12,000 employee records to build a predictive model that identifies flight risks and the underlying drivers of attrition[cite: 5, 66]. 
 
-[cite_start]By deploying a **Tuned Random Forest classifier**, we achieved a highly accurate system for flagging at-risk employees, allowing Human Resources to transition from reactive replacements to proactive retention strategies[cite: 6, 67].
+Salifort Motors loses roughly **1 in 6 employees**, and replacing each one is expensive. Using a dataset of ~12,000 employee records, this project builds a predictive model that identifies flight risks and surfaces the underlying drivers of attrition.
 
-### Model Performance (Champion: Tuned Random Forest)
-* [cite_start]**AUC:** 0.97 (Near-perfect discrimination) [cite: 16, 17, 18]
-* [cite_start]**F1 Score:** 0.90 (Balanced precision and recall) [cite: 11, 12]
-* [cite_start]**Precision:** 0.91 (When the model flags someone, it is right 91% of the time) [cite: 13, 14, 15]
-* [cite_start]**Recall:** 0.88 (The model successfully catches 88% of all actual leavers) [cite: 8, 9, 10]
+A tuned **Random Forest** classifier flags at-risk employees with high accuracy, allowing Human Resources to shift from reactive replacement to proactive retention.
+
+**Champion model — Tuned Random Forest**
+
+| Metric | Score | What it means |
+| --- | --- | --- |
+| AUC | **0.97** | Near-perfect ability to separate leavers from stayers |
+| F1 | **0.90** | Strong balance of precision and recall |
+| Precision | **0.91** | When the model flags someone, it's right 91% of the time |
+| Recall | **0.88** | Catches 88% of all actual leavers |
 
 ---
 
 ## 🔍 The Business Problem
-High turnover impacts both culture and the bottom line. Salifort makes a heavy investment in recruiting, training, and upskilling talent. [cite_start]Leadership required a data-driven understanding of *why* employees are leaving and a reliable mechanism to predict *who* will leave next[cite: 64, 66, 75].
+
+High turnover hurts both culture and the bottom line. Salifort invests heavily in recruiting, training, and upskilling, so every avoidable departure is a sunk cost. Leadership needed two things: a data-driven understanding of *why* employees leave, and a reliable way to predict *who* will leave next — early enough to act.
 
 ---
 
 ## 📊 Key Drivers of Turnover
-[cite_start]Our exploratory data analysis and feature importance extraction revealed distinct clusters of turnover risk[cite: 45]:
 
-1. [cite_start]**Workload Extremes:** The combination of `number_project` and `average_monthly_hours` is the strongest predictor of departure[cite: 35, 36]. We identified two distinct risk clusters:
-   * [cite_start]**Burnout:** Overloaded high-performers working 175+ hours/month on 6-7 projects[cite: 41, 42, 46].
-   * [cite_start]**Boreout:** Under-used employees restricted to only 2 projects[cite: 46].
-2. [cite_start]**The 5-Year Itch:** Attrition risk peaks sharply as employees approach their 4th and 5th years with the company[cite: 37, 38].
-3. [cite_start]**The Pay Gap:** Staff in the "low" salary band leave at approximately 4x the rate of other bands[cite: 43, 44].
-4. [cite_start]**Unrewarded Excellence:** High performance evaluation scores frequently correlate with elevated departure risk, indicating a lack of upward mobility or recognition[cite: 39, 40].
+Exploratory analysis and feature-importance extraction revealed distinct clusters of risk:
+
+- **Workload extremes** — the combination of `number_project` and `average_monthly_hours` is the single strongest predictor, splitting into two failure modes: **burnout** (overloaded high performers on 6–7 projects logging 175+ hours/month) and **boreout** (under-used staff restricted to only 2 projects).
+- **The 5-year itch** — attrition risk peaks sharply as employees approach their 4th and 5th years.
+- **The pay gap** — staff in the "low" salary band leave at roughly **4x** the rate of other bands.
+- **Unrewarded excellence** — high evaluation scores often correlate with *higher* departure risk, signaling a lack of upward mobility or recognition.
+
+---
+
+## 📸 Interactive Dashboard
+
+The findings ship as a 4-step decision journey — *Overview → Why They Leave → Predictive Model → Profiles & Actions.*
+
+![Attrition Overview — workforce KPIs](docs/screenshots/overview.png)
+![Model comparison — Random Forest champion](docs/screenshots/model-comparison.png)
+![Leaver profiles and recommended HR actions](docs/screenshots/profiles-actions.png)
 
 ---
 
 ## 💡 Strategic HR Recommendations
-To convert these insights into measurable retention improvements, I recommend the following structural interventions:
 
-* [cite_start]**Cap Workloads:** Institute an immediate HR review for any employee assigned to 6+ projects or logging over 240 hours per month[cite: 48, 50].
-* [cite_start]**Re-Engage the Under-Used:** Identify employees with low satisfaction scores and limited project exposure; assign meaningful work to reignite engagement[cite: 49, 51].
-* **Proactive 4-Year Reviews:** Do not wait for exit interviews. [cite_start]Schedule targeted pay, promotion, and growth trajectory reviews proactively between years 4 and 5[cite: 57, 58].
-* [cite_start]**Decouple Recognition from Hours:** Shift the internal reward structure to celebrate business impact rather than sheer volume of hours worked[cite: 53, 54].
-* **Deploy the Model Responsibly:** All interventions triggered by model predictions should be supportive outreach only, implemented with total transparency. [cite_start]The model is a tool for support, not surveillance[cite: 59, 60, 61].
+- **Cap workloads.** Trigger an HR review for anyone on 6+ projects or logging over 240 hours/month.
+- **Re-engage the under-used.** Identify low-satisfaction employees with little project exposure and assign meaningful work.
+- **Run proactive 4-year reviews.** Don't wait for exit interviews — schedule targeted pay, promotion, and growth conversations between years 4 and 5.
+- **Decouple recognition from hours.** Reward business impact, not raw volume of hours worked.
+- **Deploy the model responsibly.** Predictions should drive supportive outreach only, with full transparency. The model is a tool for support, not surveillance.
 
 ---
 
 ## 🛠️ Project Structure
-* `HR_capstone_dataset.csv`: The core dataset utilized for analysis.
-* `salifort_attrition_modeling.ipynb`: The primary Python Jupyter Notebook containing the full EDA, data cleaning, and machine learning pipeline. 
-* `Predicting-Employee-Turnover-at-Salifort-Motors.pdf`: The one-page executive summary designed for non-technical stakeholders.
-* `PACE_Strategy_Document.docx`: The foundational planning document outlining the business scenario, ethical considerations, and milestone tracking.
+
+| File | Description |
+| --- | --- |
+| `HR_capstone_dataset.csv` | The core dataset used for analysis |
+| `salifort_attrition_modeling.ipynb` | Full pipeline: EDA, cleaning, and machine learning |
+| `Predicting-Employee-Turnover-at-Salifort-Motors.pdf` | One-page executive summary for non-technical stakeholders |
+| `PACE_Strategy_Document.docx` | Planning doc covering the business scenario, ethics, and milestones |
+
+---
 
 ## 💻 Technical Stack
-* **Language:** Python
-* **Data Manipulation:** Pandas, NumPy
-* **Data Visualization:** Matplotlib, Seaborn
-* **Machine Learning:** Scikit-Learn (Logistic Regression, Decision Trees, Random Forest), XGBoost
+
+- **Language:** Python
+- **Data:** Pandas, NumPy
+- **Visualization:** Matplotlib, Seaborn, Plotly
+- **Machine Learning:** scikit-learn (Logistic Regression, Decision Tree, Random Forest), XGBoost
+- **App / Deployment:** Streamlit
+
+---
+
+## 📈 Model Comparison
+
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
+| --- | --- | --- | --- | --- | --- |
+| Logistic Regression | 0.835 | 0.505 | 0.185 | 0.271 | 0.831 |
+| Decision Tree | 0.984 | 0.971 | 0.930 | 0.950 | 0.977 |
+| **Random Forest** ⭐ | **0.986** | **0.991** | **0.926** | **0.957** | **0.980** |
+
+*Trained on 8,993 employees, evaluated on 2,998 held-out records.*
