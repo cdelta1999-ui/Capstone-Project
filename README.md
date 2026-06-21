@@ -2,7 +2,7 @@
 
 > Built an ML system that flags at-risk employees with **0.97 AUC** — and translates each prediction into a concrete retention action for HR.
 
-**🔗 [Live Dashboard (Streamlit)](https://capstone-project-j7wejjq6ti48ugjpoapje8.streamlit.app/)** • **[Interactive Data App](https://data-insight-suite-daliyachakrobor.replit.app/data-app/dashboard)** • **[Full Analysis Notebook](salifort_attrition_modeling.ipynb)** • **[Executive Summary (PDF)](Predicting-Employee-Turnover-at-Salifort-Motors.pdf)**
+**🔗 [Live Dashboard (Streamlit)](https://capstone-project-j7wejjq6ti48ugjpoapje8.streamlit.app/)** • **[Full Analysis Notebook](salifort_attrition_modeling.ipynb)** • **[Executive Summary (PDF)](Predicting-Employee-Turnover-at-Salifort-Motors.pdf)**
 
 ---
 
